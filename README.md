@@ -1,162 +1,170 @@
-# 🏥 Sistema Integrado ProCura
+# ProCura Integrated System
 
-Sistema médico integrado que combina módulos de **cobros** e **inventario** para una gestión completa de consultorios médicos.
+Sistema integrado para gestión de cobros, usuarios, consultorios e inventario.
+
+---
 
 ## 🏗️ Estructura del Proyecto
 
 ```
 modulo de cobros/
-├── backend/                    # Módulo de cobros (Express + TypeScript)
-│   ├── controllers/           # Controladores de cobros
-│   ├── routes/               # Rutas de la API
-│   ├── prisma/              # Configuración de base de datos
-│   └── index.ts             # Servidor principal (puerto 3002)
-├── inventory-module/         # Módulo de inventario (Next.js + NestJS)
-│   ├── app/                 # Aplicación Next.js
-│   ├── components/          # Componentes React
-│   └── prisma/             # Configuración de base de datos
-├── frontend/                # Frontend principal (React + Vite)
-│   ├── src/                # Código fuente React
-│   └── components/         # Componentes UI
-├── shared/                  # Código compartido entre módulos
-└── package.json            # Configuración principal
+├── backend/             # API de cobros, usuarios, consultorios (Express + Prisma)
+│   ├── controllers/    # Controladores de rutas
+│   ├── routes/         # Endpoints de la API
+│   ├── prisma/         # Configuración y migraciones de base de datos
+│   └── index.ts        # Servidor principal (puerto 3002)
+├── frontend/           # Frontend principal (React + Vite)
+│   ├── src/            # Código fuente React
+│   └── components/     # Componentes UI
+├── inventory-module/   # Módulo de inventario (Next.js)
+│   ├── app/            # Aplicación Next.js
+│   ├── components/     # Componentes React
+│   └── prisma/         # Configuración y migraciones de base de datos
+├── shared/             # Código compartido (si aplica)
+└── README.md           # Documentación principal
 ```
 
-## 🚀 Inicio Rápido
+---
 
-### Instalación
-```bash
-# Instalar todas las dependencias
-npm run install:all
+## 🚀 Instalación de dependencias
 
-# O instalar módulo por módulo
-npm install
+```sh
+# Clona el repositorio
+git clone https://github.com/Rodrigoespc03/procura-integrated-system.git
+cd procura-integrated-system
+
+# Instala dependencias en cada módulo
 cd backend && npm install
-cd ../inventory-module && npm install
 cd ../frontend && npm install
+cd ../inventory-module && npm install
 ```
 
-### Desarrollo
-```bash
-# Ejecutar todos los módulos simultáneamente
+---
+
+## ▶️ Cómo correr el sistema localmente
+
+Abre **tres terminales** (una para cada módulo):
+
+```sh
+# Backend (API de cobros, usuarios, consultorios, etc.)
+cd backend
 npm run dev
+# Corre en http://localhost:3002
 
-# O ejecutar módulos individualmente
-npm run dev:cobros      # Puerto 3002
-npm run dev:inventory   # Puerto 5558
-npm run dev:frontend    # Puerto 5173
+# Frontend (Vite/React)
+cd frontend
+npm run dev
+# Corre en http://localhost:5173
+
+# Inventario (Next.js)
+cd inventory-module
+npm run dev
+# Corre en http://localhost:3000
 ```
 
-## 📡 Endpoints Disponibles
+---
 
-### Módulo de Cobros (Puerto 3002)
-- `GET /api/pacientes` - Listar pacientes
-- `POST /api/pacientes` - Crear paciente
-- `GET /api/cobros` - Listar cobros
-- `POST /api/cobros` - Crear cobro (requiere JWT)
-- `GET /api/servicios` - Listar servicios
-- `GET /api/consultorios` - Listar consultorios
+## ⚙️ Variables de entorno
 
-### Módulo de Inventario (Puerto 5558)
-- `POST /inventory/entry` - Entrada de inventario
-- `POST /inventory/exit` - Salida de inventario
-- `POST /inventory/use` - Uso de inventario
-- `GET /dashboard` - Dashboard de inventario
-- `GET /inventory/products` - Listar productos
+Copia el archivo `.env.example` a `.env` en cada módulo y configura las variables necesarias:
 
-## 🔐 Autenticación
+- **backend/.env**
+  - `DATABASE_URL`: URL de conexión a PostgreSQL (Supabase o local)
+  - `JWT_SECRET`: Clave secreta para JWT
+  - `PORT`: Puerto del backend (por defecto 3002)
 
-Ambos módulos utilizan JWT para autenticación:
-```bash
-Authorization: Bearer <JWT_TOKEN>
-```
+- **inventory-module/.env**
+  - `DATABASE_URL`: URL de conexión a PostgreSQL
+  - `JWT_SECRET`: Clave secreta para JWT
+  - `PORT`: Puerto del inventario (por defecto 3000)
 
-## 🗄️ Base de Datos
+- **frontend/.env** (opcional)
+  - `API_URL`: URL del backend si se usa proxy o variables de entorno
 
-- **Proveedor**: Supabase (PostgreSQL)
-- **ORM**: Prisma
-- **Compartida**: Ambos módulos usan la misma base de datos
+**IMPORTANTE:**
+Si ambos sistemas usan JWT, acuerden el mismo `JWT_SECRET` para pruebas de integración.
 
-## 🛠️ Tecnologías
+---
 
-### Backend Cobros
-- Express.js
-- TypeScript
-- Prisma ORM
-- JWT Authentication
+## 🔑 Endpoints principales y autenticación
 
-### Módulo Inventario
-- Next.js 14
-- NestJS
-- Prisma ORM
-- JWT Authentication
+- **Login:**
+  - `POST /api/login`
+  - Body: `{ "email": "usuario@correo.com", "password": "123456" }`
+  - Responde: `{ token, user }`
 
-### Frontend
-- React 18
-- Vite
-- TypeScript
-- Tailwind CSS
-- Shadcn UI
+- **Usuarios, Consultorios, Cobros, etc.:**
+  - Todos los endpoints principales están bajo `/api/` en el backend.
 
-## 📝 Scripts Disponibles
+- **Autenticación:**
+  - Usa JWT en el header:
+    ```
+    Authorization: Bearer <token>
+    ```
 
-```bash
-# Desarrollo
-npm run dev                    # Ejecutar todos los módulos
-npm run dev:cobros            # Solo módulo de cobros
-npm run dev:inventory         # Solo módulo de inventario
-npm run dev:frontend          # Solo frontend
+---
 
-# Construcción
-npm run build                 # Construir todos los módulos
-npm run build:cobros         # Construir módulo de cobros
-npm run build:inventory      # Construir módulo de inventario
-npm run build:frontend       # Construir frontend
+## 🔗 Comunicación entre sistemas
 
-# Producción
-npm run start                 # Ejecutar en producción
-npm run start:cobros         # Solo cobros en producción
-npm run start:inventory      # Solo inventario en producción
-npm run start:frontend       # Solo frontend en producción
-```
+- **Recomendado:**
+  - El **frontend** consume ambos backends (cobros e inventario) por separado, pero pueden unificar APIs si lo desean.
+- **CORS:**
+  - Ambos backends permiten CORS para los puertos locales (`5173`, `3000`, etc.).
+  - Si necesitas consumir APIs entre backends, asegúrate de permitir el origen correspondiente en la configuración de CORS.
 
-## 🔧 Configuración
+---
 
-### Variables de Entorno
+## 🌐 Puertos
 
-**Backend Cobros** (`backend/.env`):
-```env
-PORT=3002
-DATABASE_URL="postgresql://..."
-JWT_SECRET="your-secret-key"
-```
+- **Backend cobros:** `http://localhost:3002`
+- **Frontend:** `http://localhost:5173`
+- **Inventario:** `http://localhost:3000`
 
-**Módulo Inventario** (`inventory-module/.env`):
-```env
-PORT=5558
-DATABASE_URL="postgresql://..."
-JWT_SECRET="your-secret-key"
-```
+---
 
-## 🤝 Integración
+## 🛠 Scripts útiles
 
-Los módulos se comunican a través de:
-- **Base de datos compartida** (Supabase)
-- **Autenticación unificada** (JWT)
-- **Frontend integrado** (React + Vite)
+- `npm run dev`         # Levanta el servidor en modo desarrollo
+- `npm run build`       # Compila el proyecto para producción
+- `npm run start`       # Inicia el servidor en modo producción
+- `npm run test`        # Ejecuta los tests (si aplica)
 
-## 📊 Estado del Proyecto
+---
 
-- ✅ **Módulo de Cobros**: Funcionando
-- ✅ **Módulo de Inventario**: Integrado
-- ✅ **Frontend**: Configurado
-- 🔄 **Integración**: En progreso
+## 🗄️ Migraciones y base de datos
 
-## 👥 Autores
+- Para aplicar migraciones de Prisma:
+  ```sh
+  cd backend
+  npx prisma migrate dev
+  # o para producción
+  npx prisma migrate deploy
+  ```
+- Los scripts de migración están en `backend/prisma/migrations/` y `inventory-module/prisma/migrations/`.
 
-- **Rodrigo Espinosa** - Módulo de Cobros
-- **Pablo** - Módulo de Inventario
+---
 
-## 📄 Licencia
+## 🧩 Troubleshooting
 
-MIT License 
+- Si tienes problemas con dependencias, ejecuta `npm install` en cada módulo.
+- Si hay errores de puerto ocupado, cambia el puerto en el `.env` correspondiente.
+- Si la base de datos no conecta, revisa la URL y credenciales en `.env`.
+- Si tienes problemas con CORS, revisa la configuración en el backend.
+
+---
+
+## 🤝 Recomendaciones de colaboración
+
+- Usa ramas (`git checkout -b feature/nueva-funcionalidad`) para trabajo paralelo.
+- Haz pull requests para revisión de código.
+- Documenta cambios importantes en el README o en la wiki del repo.
+- Mantén actualizado tu fork o rama principal con `git pull`.
+
+---
+
+## 👥 Autores y contacto
+
+- **Rodrigoespc03** (Cobros, integración)
+- **[Tu compadre]** (Inventario)
+
+¿Dudas? Contacta a Rodrigoespc03 o revisa la documentación interna de cada módulo. 
