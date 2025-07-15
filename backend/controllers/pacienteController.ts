@@ -96,3 +96,26 @@ export async function deletePaciente(req: Request, res: Response) {
     res.status(404).json({ error: 'Paciente no encontrado' });
   }
 } 
+
+export async function searchPacientes(req: Request, res: Response) {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      return res.status(400).json({ error: 'Query demasiado corto' });
+    }
+    const pacientes = await prisma.paciente.findMany({
+      where: {
+        OR: [
+          { nombre: { contains: q } },
+          { apellido: { contains: q } },
+        ],
+      },
+      orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }],
+      take: 10,
+    });
+    res.json(pacientes);
+  } catch (error: any) {
+    console.error('Error en searchPacientes:', error);
+    res.status(500).json({ error: error.message });
+  }
+} 

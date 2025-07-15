@@ -37,4 +37,20 @@ export async function getConsultorios() {
 export async function getCobros() {
   const res = await axios.get(COBROS_URL);
   return res.data;
+}
+
+export async function eliminarCobro(id: string) {
+  const token = localStorage.getItem('token');
+  const res = await axios.delete(`${COBROS_URL}/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
+
+export async function editarCobro(id: string, data: any) {
+  const token = localStorage.getItem('token');
+  const res = await axios.put(`${COBROS_URL}/${id}`, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
 } 

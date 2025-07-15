@@ -207,6 +207,13 @@ export const updateCobro = asyncHandler(async (req: Request, res: Response) => {
 export const deleteCobro = asyncHandler(async (req: Request, res: Response) => {
   console.log("Entrando a deleteCobro");
   const { id } = req.params;
+  // Eliminar conceptos relacionados
+  await prisma.cobroConcepto.deleteMany({ where: { cobro_id: id } });
+  // Eliminar métodos de pago relacionados
+  await prisma.metodoPagoCobro.deleteMany({ where: { cobro_id: id } });
+  // Eliminar historial relacionado
+  await prisma.historialCobro.deleteMany({ where: { cobro_id: id } });
+  // Finalmente, eliminar el cobro
   await prisma.cobro.delete({ where: { id } });
   res.json({ message: 'Cobro eliminado' });
 });

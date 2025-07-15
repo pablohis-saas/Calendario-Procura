@@ -24,8 +24,6 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-const EVENT_STORAGE_KEY = "calendario_events";
-
 const eventTypes = [
   { value: "primera_vez", label: "Consulta de primera vez", color: "#4285f2" },
   { value: "consulta", label: "Consulta", color: "#34a853" },
@@ -79,12 +77,19 @@ export default function Calendario() {
   const [date, setDate] = useState(new Date());
 
   useEffect(() => {
-    setEvents(loadEvents());
+    cargarEventos();
     cargarPacientes();
   }, []);
-  useEffect(() => {
-    saveEvents(events);
-  }, [events]);
+
+  const cargarEventos = async () => {
+    try {
+      const res = await fetch("/api/citas");
+      const data = await res.json();
+      setEvents(data);
+    } catch (error) {
+      setEvents([]);
+    }
+  };
 
   const cargarPacientes = async () => {
     try {
@@ -122,11 +127,7 @@ export default function Calendario() {
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (!form.title.trim()) {
-      setError("El título es obligatorio");
-      return;
-    }
+  const handleSave = async () => {
     if (form.end <= form.start) {
       setError("La hora de fin debe ser mayor a la de inicio");
       return;
@@ -145,12 +146,30 @@ export default function Calendario() {
       setOverlapWarning("");
     }
     if (editMode) {
+      // TODO: Implementar edición real con PUT /api/citas/:id
       setEvents(events.map(ev => ev.id === form.id ? { ...form } : ev));
     } else {
-      setEvents([
-        ...events,
-        { ...form, id: Date.now().toString() },
-      ]);
+      try {
+        const res = await fetch("/api/citas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paciente_id: "dummy-paciente-id",
+            usuario_id: "dummy-usuario-id",
+            consultorio_id: "dummy-consultorio-id",
+            fecha_inicio: form.start,
+            fecha_fin: form.end,
+            descripcion: form.descripcion,
+            estado: "pendiente",
+            color: eventTypes.find(t => t.value === form.type)?.color || "#3B82F6",
+          }),
+        });
+        if (res.ok) {
+          await cargarEventos();
+        }
+      } catch (error) {
+        // Manejar error
+      }
     }
     setModalOpen(false);
   };

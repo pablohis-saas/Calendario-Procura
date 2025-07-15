@@ -21,6 +21,7 @@ model Paciente {
   apellido            String
   citas               citas[]
   cobros              Cobro[]
+  InventoryUsage      InventoryUsage[]
 
   @@map("pacientes")
 }
@@ -110,8 +111,8 @@ model HistorialCobro {
   id               String     @id @default(uuid())
   created_at       DateTime   @default(now())
   cobro_id         String
-  detalles_antes   Json?
-  detalles_despues Json
+  detalles_antes   String?    // JSON como string en SQLite
+  detalles_despues String     // JSON como string en SQLite
   tipo_cambio      TipoCambio
   usuario_id       String
   cobro            Cobro      @relation(fields: [cobro_id], references: [id])
@@ -161,6 +162,7 @@ model Allergen {
 model InventoryUsage {
   id                   String                 @id
   nombrePaciente       String
+  pacienteId           String?                // Opcional para compatibilidad
   tipoTratamiento      TipoTratamiento
   observaciones        String?
   tuvoReaccion         Boolean
@@ -171,10 +173,12 @@ model InventoryUsage {
   userId               String
   Sede                 Sede                   @relation(fields: [sedeId], references: [id])
   User                 User                   @relation(fields: [userId], references: [id])
+  Paciente             Paciente?              @relation(fields: [pacienteId], references: [id])
   InventoryUsageDetail InventoryUsageDetail[]
 
   @@index([sedeId])
   @@index([userId])
+  @@index([pacienteId])
 }
 
 model InventoryUsageDetail {
@@ -185,9 +189,9 @@ model InventoryUsageDetail {
   inventoryUsageId String
   movementId       String?
   productId        String
-  quantity         Decimal        @db.Decimal(10, 2)
-  totalCost        Decimal        @db.Decimal(10, 2)
-  unitCost         Decimal        @db.Decimal(10, 2)
+  quantity         Float
+  totalCost        Float
+  unitCost         Float
   units            Int?
   updatedAt        DateTime
   InventoryUsage   InventoryUsage @relation(fields: [inventoryUsageId], references: [id])
@@ -205,9 +209,9 @@ model Movement {
   sedeId               String
   productId            String
   type                 MovementType
-  quantity             Decimal                @db.Decimal(10, 2)
-  unitCost             Decimal                @db.Decimal(10, 2)
-  totalCost            Decimal                @db.Decimal(10, 2)
+  quantity             Float
+  unitCost             Float
+  totalCost            Float
   batchNumber          String?
   expiryDate           DateTime?
   createdAt            DateTime               @default(now())
@@ -334,7 +338,6 @@ model User {
 
 model citas {
   id             String      @id
-  titulo         String
   descripcion    String?
   estado         EstadoCita
   paciente_id    String

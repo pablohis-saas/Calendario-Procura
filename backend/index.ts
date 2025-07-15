@@ -11,6 +11,8 @@ import servicioRoutes from './routes/servicioRoutes';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import { inventoryRoutes } from './routes/inventoryRoutes';
+import citaRoutes from './routes/citaRoutes';
 dotenv.config();
 
 console.log("Iniciando backend...");
@@ -83,6 +85,8 @@ app.use('/api/cobro-conceptos', cobroConceptoRoutes);
 app.use('/api/historial-cobros', historialCobroRoutes);
 app.use('/api/servicios', servicioRoutes);
 app.use('/api', authRoutes);
+app.use('/api', inventoryRoutes);
+app.use('/api/citas', citaRoutes);
 
 const PORT: number = parseInt(process.env.PORT || '3002', 10);
 

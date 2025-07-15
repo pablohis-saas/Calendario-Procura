@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TipoTratamiento } from '@prisma/client'
+import { TipoTratamiento } from '@/types/inventory'
 
 // Schema for a single detail item in the inventory usage record
 const inventoryUsageDetailSchema = z.object({
@@ -24,6 +24,7 @@ export const inventoryUsageSchema = z
     items: z.array(inventoryUsageDetailSchema).min(1, {
       message: 'Debes agregar al menos un item de uso de inventario',
     }),
+    pacienteId: z.string().min(1, 'Selecciona un paciente'),
   })
   .refine(
     (data) => {

@@ -6,7 +6,7 @@ import { useForm, useFieldArray as useFieldArrayRH } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useConceptos } from "./ConceptosContext";
-import { crearCobro, agregarConceptoACobro, getPacientes, getUsuarios, getConsultorios, getCobros } from "../services/cobrosService";
+import { crearCobro, agregarConceptoACobro, getPacientes, getUsuarios, getConsultorios, getCobros, eliminarCobro, editarCobro } from "../services/cobrosService";
 import PacienteSearch from "./PacienteSearch";
 import TableFilters from "./TableFilters";
 import { exportToPDF, exportToExcel, formatCobrosForExport } from "../services/exportService";
@@ -86,6 +86,8 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [estadoCobro, setEstadoCobro] = useState('PENDIENTE');
+  const [editCobro, setEditCobro] = useState<any>(null);
+  const [editFormOpen, setEditFormOpen] = useState(false);
 
   useEffect(() => {
     getPacientes().then(setPacientes);
@@ -484,6 +486,7 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
               <th className="px-8 py-5 text-left text-gray-700 uppercase tracking-wider text-lg">Fecha</th>
               <th className="px-8 py-5 text-left text-gray-700 uppercase tracking-wider text-lg">Método</th>
               <th className="px-8 py-5 text-left text-gray-700 uppercase tracking-wider text-lg">Factura</th>
+              <th className="px-8 py-5 text-left text-gray-700 uppercase tracking-wider text-lg">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -504,9 +507,13 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
                   {cobro.fecha_cobro?.slice(0,10)}
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-[#e3f0fd] text-[#4285f2]">
-                    {cobro.metodo_pago}
-                  </span>
+                  {Array.isArray(cobro.metodos_pago) && cobro.metodos_pago.length > 0 ? (
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-[#e3f0fd] text-[#4285f2]">
+                      {cobro.metodos_pago.map((mp: any) => mp.metodo_pago).join(', ')}
+                    </span>
+                  ) : (
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap">
                   {cobro.notas?.toLowerCase().includes("factura") ? (
@@ -518,6 +525,22 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
                       No
                     </span>
                   )}
+                </td>
+                <td className="px-8 py-5 whitespace-nowrap flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setEditCobro(cobro);
+                    setEditFormOpen(true);
+                  }}>Editar</Button>
+                  <Button variant="destructive" size="sm" onClick={async () => {
+                    if (window.confirm('¿Seguro que deseas eliminar este cobro?')) {
+                      try {
+                        await eliminarCobro(cobro.id);
+                        await refreshCobros();
+                      } catch (e) {
+                        alert('Error al eliminar el cobro');
+                      }
+                    }
+                  }}>Eliminar</Button>
                 </td>
               </tr>
             ))}
@@ -544,6 +567,47 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg animate-in slide-in-from-right-2 duration-300">
           ❌ {errorMsg}
         </div>
+      )}
+      {editFormOpen && editCobro && (
+        <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Cobro</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                // Recoge los datos del formulario (puedes usar un ref o un pequeño formulario controlado)
+                // Aquí solo un ejemplo básico:
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                const payload: any = {};
+                formData.forEach((value, key) => { payload[key] = value; });
+                try {
+                  await editarCobro(editCobro.id, payload);
+                  setEditFormOpen(false);
+                  setEditCobro(null);
+                  await refreshCobros();
+                } catch (err) {
+                  alert('Error al editar el cobro');
+                }
+              }}
+              className="flex flex-col gap-4"
+            >
+              <label>Monto
+                <input name="monto_total" defaultValue={editCobro.monto_total} className="border p-2 rounded w-full" />
+              </label>
+              <label>Notas
+                <input name="notas" defaultValue={editCobro.notas} className="border p-2 rounded w-full" />
+              </label>
+              {/* Agrega más campos según lo que quieras permitir editar */}
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => setEditFormOpen(false)}>Cancelar</Button>
+                <Button type="submit">Guardar</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

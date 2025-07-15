@@ -78,11 +78,22 @@ export default function ConceptoSearch({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    if (onChange) onChange(null); // Limpiar selección si el usuario edita
+    const newValue = e.target.value;
+    setSearchTerm(newValue);
+    
+    // Si el usuario está escribiendo, entrar en modo búsqueda
+    // Solo limpiar la selección si hay un concepto seleccionado y el texto no coincide
+    if (onChange && selectedConcepto && newValue !== selectedConcepto.nombre) {
+      onChange(null);
+    }
   };
 
   const handleInputFocus = () => {
+    // Si hay un concepto seleccionado, permitir editar su nombre
+    if (selectedConcepto) {
+      setSearchTerm(selectedConcepto.nombre);
+    }
+    
     if (searchTerm.trim() && filteredConceptos.length > 0) {
       setIsOpen(true);
     }

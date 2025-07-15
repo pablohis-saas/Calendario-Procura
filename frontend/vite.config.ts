@@ -12,6 +12,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/inventory': 'http://localhost:3000',
+      '/api/inventory-entry': 'http://localhost:3000',
       '/api': 'http://localhost:3002',
     },
   },
