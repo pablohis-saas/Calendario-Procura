@@ -1,0 +1,154 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You are an expert in Solidity, TypeScript, Node.js, Next.js 14 App Router, React, Vite, Viem v2, Wagmi v2, Shadcn UI, Radix UI, and Tailwind Aria.
+
+---
+
+# ✅ Key Principles
+
+- Write concise, technical responses with accurate TypeScript examples.
+- Use functional, declarative programming. Avoid classes.
+- Prefer iteration and modularization over duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., `isLoading`).
+- Use lowercase with dashes for directories (e.g., `components/auth-wizard`).
+- Favor named exports for components.
+- Use the Receive an Object, Return an Object (RORO) pattern.
+
+---
+
+# 🧱 Project Structure
+
+- Organiza el código por feature, no por tipo (ej. `features/inventory/`, `features/auth/`).
+- Agrupa componentes reutilizables en `components/ui/` o `components/common/`.
+- Usa carpetas dedicadas para `services/`, `hooks/`, `lib/`, `schemas/`, `types/`, `actions/`, `dto/`.
+
+---
+
+# 🔡 Naming Conventions
+
+- camelCase para archivos `.ts`, `.tsx`
+- PascalCase para componentes React
+- kebab-case para rutas (`/inventory/exit`)
+- Sufijos:
+  - `Dto` para objetos de transferencia de datos
+  - `Schema` para validaciones con Zod
+  - `Props` para interfaces de componentes
+
+---
+
+# ✍ JavaScript/TypeScript Rules
+
+- Usa `function` keyword para funciones puras. No uses `const` para componentes.
+- Usa TypeScript en todo el código. Prefiere `interface` sobre `type`.
+- Evita `enum`, usa `map` o `union string literals`.
+- Estructura por archivo: componente exportado, subcomponentes, helpers, contenido estático, types.
+- Evita `{}` innecesarios en condicionales.
+- Prefiere sintaxis simple de una línea: `if (x) doSomething()`.
+- Early return para errores. Pon el camino feliz al final.
+- Usa guard clauses para precondiciones.
+- No uses `else` después de `return`.
+- Implementa logging de errores y mensajes amigables al usuario.
+- Usa tipos de error personalizados o `error factories` para manejar errores consistentemente.
+
+---
+
+# 🛠 Dependencies
+
+- `Next.js 14 App Router`
+- `Wagmi v2`
+- `Viem v2`
+- `Shadcn UI`
+- `Radix UI`
+- `Tailwind CSS + Aria`
+- `Zod`
+
+---
+
+# ⚛ React/Next.js
+
+- Usa componentes funcionales con interfaces de TypeScript.
+- Declarative JSX siempre.
+- Evita `use client` salvo que sea imprescindible (DOM APIs, modales, inputs).
+- Usa `Server Components` cuando sea posible.
+- Sigue arquitectura RSC (React Server Components).
+- Implementa validación con `Zod` en formularios.
+- Usa `Suspense` para componentes cliente.
+- Carga componentes no críticos de forma dinámica (`dynamic(() => import(...))`).
+- Optimiza imágenes con WebP, lazy loading, y props de NextImage.
+
+---
+
+# ✅ next-safe-action (server actions)
+
+- Usa `next-safe-action` para toda acción del servidor.
+- Define esquemas con Zod en carpeta `schemas/`
+- Todas las actions devuelven `ActionResponse<T>`:
+
+```ts
+'use server'
+import { createSafeActionClient } from 'next-safe-action'
+import { z } from 'zod'
+import type { ActionResponse } from '@/types/actions'
+
+const schema = z.object({
+  value: z.string()
+})
+
+export const exampleAction = createSafeActionClient()
+  .schema(schema)
+  .action(async (input): Promise<ActionResponse> => {
+    try {
+      return { success: true, data: 'ok' }
+    } catch (err) {
+      return {
+        success: false,
+        error: error instanceof AppError ? error : appErrors.UNEXPECTED_ERROR,
+      }
+    }
+  })
+```
+
+---
+
+# 🧪 Form Handling
+
+- Usa `react-hook-form` + `zodResolver` + `useActionState`
+- El formulario devuelve errores esperados como return values (no `try/catch`).
+- Para errores inesperados, usa error boundaries (`error.tsx`, `global-error.tsx`)
+
+---
+
+# 📈 Performance
+
+- Usa `Next.js` App Router para state changes (navegación, formularios, etc.)
+- Optimiza Web Vitals: `LCP`, `CLS`, `FID`
+- Carga diferida de componentes no críticos
+- Aplica `Suspense` + `fallback` para client boundaries
+
+---
+
+# ✅ Validación con Zod
+
+- Define los schemas en carpeta `schemas/`
+- Reutiliza el mismo schema en actions y formularios si aplica
+- Siempre sanitiza los inputs
+
+---
+
+# ✅ Buenas prácticas
+
+- No uses `use client` salvo que sea necesario (DOM APIs, `useForm`, modales)
+- Minimiza el uso de `useEffect`, `setState`
+- Evita `any`, usa tipado estricto
+- Maneja los errores en el cliente con `toast.error` o inline
+- Agrupa helpers en `/lib` y acceso a APIs en `/services`
+
+---
+
+# ✅ Cierre
+Este archivo define los estándares y arquitectura del frontend de **ProCura**. Toda nueva funcionalidad debe adherirse a estas reglas para mantener consistencia, escalabilidad y mantenibilidad.
+
+---
