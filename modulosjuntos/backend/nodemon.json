@@ -1,0 +1,7 @@
+{
+  "watch": ["*.ts", "controllers/", "routes/", "utils/"],
+  "ext": "ts,js,json",
+  "ignore": ["node_modules/", "dist/", "tests/"],
+  "exec": "ts-node index.ts",
+  "cwd": "./"
+} 
