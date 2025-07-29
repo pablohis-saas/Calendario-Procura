@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(uuid())
+  email          String           @unique
+  name           String
+  role           UserRole
+  sedeId         String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  InventoryUsage InventoryUsage[]
+  movements      Movement[]
+  sede           Sede             @relation(fields: [sedeId], references: [id])
+
+  @@index([sedeId])
+}
+
+model Sede {
+  id             String              @id @default(uuid())
+  name           String
+  address        String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  InventoryUsage InventoryUsage[]
+  movements      Movement[]
+  expirations    ProductExpiration[]
+  stocks         StockBySede[]
+  users          User[]
+}
+
+model Product {
+  id                   String                 @id @default(uuid())
+  name                 String
+  type                 ProductType
+  unit                 ProductUnit
+  description          String?
+  costPerUnit          Decimal                @db.Decimal(10, 2)
+  minStockLevel        Int
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  category             String?
+  InventoryUsageDetail InventoryUsageDetail[]
+  movements            Movement[]
+  allergens            ProductAllergen[]
+  expirations          ProductExpiration[]
+  stocks               StockBySede[]
+
+  @@index([name])
+}
+
+model StockBySede {
+  id        String   @id @default(uuid())
+  productId String
+  sedeId    String
+  quantity  Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  sede      Sede     @relation(fields: [sedeId], references: [id])
+
+  @@unique([productId, sedeId])
+  @@index([productId])
+  @@index([sedeId])
+}
+
+model Movement {
+  id                   String                 @id @default(uuid())
+  userId               String
+  sedeId               String
+  productId            String
+  type                 MovementType
+  quantity             Decimal                @db.Decimal(10, 2)
+  unitCost             Decimal                @db.Decimal(10, 2)
+  totalCost            Decimal                @db.Decimal(10, 2)
+  batchNumber          String?
+  expiryDate           DateTime?
+  createdAt            DateTime               @default(now())
+  InventoryUsageDetail InventoryUsageDetail[]
+  product              Product                @relation(fields: [productId], references: [id])
+  sede                 Sede                   @relation(fields: [sedeId], references: [id])
+  user                 User                   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sedeId])
+  @@index([productId])
+  @@index([createdAt])
+  @@index([batchNumber])
+  @@index([expiryDate])
+}
+
+model Allergen {
+  id                String            @id @default(uuid())
+  name              String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  alxoidType        AlxoidType?
+  isAlxoidExclusive Boolean           @default(false)
+  products          ProductAllergen[]
+
+  @@index([name])
+  @@index([alxoidType])
+  @@index([isAlxoidExclusive])
+}
+
+model ProductAllergen {
+  id         String   @id @default(uuid())
+  productId  String
+  allergenId String
+  mlPerDose  Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  allergen   Allergen @relation(fields: [allergenId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@unique([productId, allergenId])
+  @@index([productId])
+  @@index([allergenId])
+}
+
+model Supplier {
+  id             String   @id @default(uuid())
+  name           String
+  invoiceNumber  String?
+  amountSupplied Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([name])
+  @@index([invoiceNumber])
+}
+
+model ProductExpiration {
+  id          String   @id @default(uuid())
+  productId   String
+  sedeId      String
+  batchNumber String
+  expiryDate  DateTime
+  quantity    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id])
+  sede        Sede     @relation(fields: [sedeId], references: [id])
+
+  @@index([productId])
+  @@index([sedeId])
+  @@index([expiryDate])
+  @@index([batchNumber])
+}
+
+model InventoryUsage {
+  id                   String                 @id @default(uuid())
+  nombrePaciente       String
+  tipoTratamiento      TipoTratamiento
+  observaciones        String?
+  tuvoReaccion         Boolean
+  descripcionReaccion  String?
+  createdAt            DateTime               @default(now())
+  sedeId               String
+  updatedAt            DateTime               @updatedAt
+  userId               String
+  sede                 Sede                   @relation(fields: [sedeId], references: [id])
+  user                 User                   @relation(fields: [userId], references: [id])
+  InventoryUsageDetail InventoryUsageDetail[]
+
+  @@index([sedeId])
+  @@index([userId])
+}
+
+model InventoryUsageDetail {
+  id               String         @id @default(uuid())
+  createdAt        DateTime       @default(now())
+  doses            Int?
+  frascoLevel      Int?
+  inventoryUsageId String
+  movementId       String?
+  productId        String
+  quantity         Decimal        @db.Decimal(10, 2)
+  totalCost        Decimal        @db.Decimal(10, 2)
+  unitCost         Decimal        @db.Decimal(10, 2)
+  units            Int?
+  updatedAt        DateTime       @updatedAt
+  InventoryUsage   InventoryUsage @relation(fields: [inventoryUsageId], references: [id])
+  Movement         Movement?      @relation(fields: [movementId], references: [id])
+  Product          Product        @relation(fields: [productId], references: [id])
+
+  @@index([inventoryUsageId])
+  @@index([movementId])
+  @@index([productId])
+}
+
+enum UserRole {
+  DOCTOR
+  NURSE
+  SECRETARY
+}
+
+enum ProductUnit {
+  ML
+  PIECE
+}
+
+enum ProductType {
+  SIMPLE
+  COMPLEX
+}
+
+enum MovementType {
+  ENTRY
+  EXIT
+}
+
+enum TipoTratamiento {
+  INMUNOTERAPIA
+  PRUEBAS
+  GAMMAGLOBULINA
+  VACUNAS_PEDIATRICAS
+  MEDICAMENTOS_EXTRAS
+  CONSULTA
+}
+
+enum AlxoidType {
+  A
+  B
+}

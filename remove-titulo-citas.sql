@@ -1,0 +1,1 @@
+ALTER TABLE "citas" DROP COLUMN IF EXISTS "titulo"; 

@@ -63,31 +63,41 @@ Bravo/
 └── tests/                      # Pruebas
 ```
 
-## 🚀 Instalación
+## 🚀 Inicio Rápido
 
-### Prerrequisitos
-- Node.js 18+
-- PostgreSQL
-- Cuenta de Google Cloud Platform
-- Cuenta de WhatsApp Business API (opcional)
-
-### 1. Clonar el repositorio
+### Opción 1: Un solo comando (Recomendado)
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd Bravo
+npm start
 ```
 
-### 2. Configurar variables de entorno
+### Opción 2: Modo desarrollo
 ```bash
-# Backend
+npm run dev
+```
+
+### Opción 3: Manual (si hay problemas)
+```bash
+# Terminal 1 - Backend de cobros
 cd modulosjuntos/backend
-cp .env.example .env
+npm start
+
+# Terminal 2 - Frontend
+cd modulosjuntos/frontend
+npm run dev
 ```
 
-Editar `.env` con tus credenciales:
-```env
-# Database
-DATABASE_URL="postgresql://..."
+## 🛠️ Configuración
+
+### Base de Datos
+- **Cobros**: PostgreSQL (Supabase)
+- **Inventario**: PostgreSQL (configurado en `inventory-module`)
+
+### Variables de Entorno
+```bash
+# .env (raíz del proyecto)
+DATABASE_URL=postgresql://...
+NODE_ENV=development
+JWT_SECRET=supersecreto123
 
 # Google Calendar
 GOOGLE_CLIENT_ID="tu_client_id"
@@ -99,33 +109,27 @@ WHATSAPP_PHONE_NUMBER_ID="tu_phone_number_id"
 WHATSAPP_ACCESS_TOKEN="tu_access_token"
 ```
 
-### 3. Instalar dependencias
+## 📊 Puertos por Defecto
+
+- **Frontend**: http://localhost:5173
+- **Backend**: http://localhost:3002
+
+## 🔧 Comandos Útiles
+
 ```bash
-# Backend
+# Instalar todas las dependencias
+npm run install:all
+
+# Compilar todo
+npm run build
+
+# Ejecutar tests
+npm test
+
+# Insertar datos de prueba (cobros)
 cd modulosjuntos/backend
-npm install
-
-# Frontend
-cd ../frontend
-npm install
-```
-
-### 4. Configurar base de datos
-```bash
-cd modulosjuntos/backend
-npx prisma generate
-npx prisma db push
-```
-
-### 5. Ejecutar el proyecto
-```bash
-# Backend (puerto 3002)
-cd modulosjuntos/backend
-npm start
-
-# Frontend (puerto 5173)
-cd modulosjuntos/frontend
-npm run dev
+npm run seed
+npm run seed-services
 ```
 
 ## 🔧 Configuración Google Calendar
@@ -209,6 +213,32 @@ curl http://localhost:3002/api/whatsapp/webhook
 curl -X POST http://localhost:3002/api/whatsapp/reminder/CITA_ID
 ```
 
+## 🎯 Para la Demo
+
+1. Ejecuta `npm start` desde la raíz
+2. Abre http://localhost:5173 en el navegador
+3. Usa las credenciales de demo:
+   - Email: `demo@procura.com`
+   - Contraseña: (verificar en el código)
+
+## 🐛 Solución de Problemas
+
+### Error: "Cannot find module"
+```bash
+cd modulosjuntos/backend
+npm run build
+```
+
+### Error: "Missing script: start"
+El frontend usa `npm run dev`, no `npm start`
+
+### Error de base de datos
+```bash
+cd modulosjuntos/backend
+npx prisma db push
+npm run seed
+```
+
 ## 📝 Notas de Desarrollo
 
 ### Cambios Recientes
@@ -224,6 +254,13 @@ curl -X POST http://localhost:3002/api/whatsapp/reminder/CITA_ID
 - [ ] Integración con más calendarios
 - [ ] Sistema de notificaciones push
 - [ ] App móvil
+
+## 📝 Notas
+
+- El módulo de inventario usa NestJS y PostgreSQL
+- El backend de cobros usa Express y PostgreSQL
+- Ambos módulos funcionan independientemente
+- El frontend se conecta a ambos backends
 
 ## 🤝 Contribución
 
@@ -245,4 +282,4 @@ Este proyecto es privado y confidencial.
 ---
 
 **Última actualización**: Julio 2025
-**Versión**: 1.0.0 
+**Versión**: 1.0.0

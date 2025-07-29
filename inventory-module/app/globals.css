@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* Shadcn UI tokens workaround for Tailwind v4 */
+.bg-muted\/50 {
+  background-color: hsl(var(--muted) / 0.5) !important;
+}
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+:root {
+  /* Paleta de colores y tokens para Shadcn UI */
+  --background: 248 250 252;
+  --foreground: 15 23 42;
+  --muted: 241 245 249;
+  --muted-foreground: 100 116 139;
+  --card: 255 255 255;
+  --card-foreground: 15 23 42;
+  --border: 226 232 240;
+  --input: 226 232 240;
+  --primary: 59 130 246;
+  --primary-foreground: 255 255 255;
+  --accent: 139 92 246;
+  --accent-foreground: 255 255 255;
+  --danger: 239 68 68;
+  --danger-foreground: 255 255 255;
+  --warning: 251 191 36;
+  --warning-foreground: 15 23 42;
+  
+  /* Card colors */
+  --card: 255 255 255; /* #ffffff */
+  --card-foreground: 15 23 42; /* #0f172a */
+  
+  /* Border and input colors */
+  --border: 226 232 240; /* #e2e8f0 */
+  --input: 226 232 240; /* #e2e8f0 */
+  
+  /* Primary colors (Google Blue) */
+  --primary: 66 133 242; /* #4285f2 */
+  --primary-foreground: 255 255 255; /* #ffffff */
+  
+  /* Secondary colors */
+  --secondary: 241 245 249; /* #f1f5f9 */
+  --secondary-foreground: 15 23 42; /* #0f172a */
+  
+  /* Destructive colors (Google Red) */
+  --destructive: 234 67 53; /* #ea4335 */
+  --destructive-foreground: 255 255 255; /* #ffffff */
+  
+  /* Ring colors */
+  --ring: 66 133 242; /* #4285f2 */
+  
+  /* Border radius */
+  --radius: 0.5rem;
+}
+
+/* Base styles */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* background: hsl(var(--background)); */
+  /* color: hsl(var(--foreground)); */
+  line-height: 1.6;
+}
+
+/* Typography improvements */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: hsl(var(--foreground));
+}
+
+h1 {
+  font-size: 2.25rem; /* 36px */
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 600;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.8);
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Layout utilities */
+.page-container {
+  /* Línea eliminada: @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; (prohibido en Tailwind v4) */
+}
+
+.section-spacing {
+  /* Línea eliminada: @apply space-y-6; (prohibido en Tailwind v4) */
+}
+
+.card-spacing {
+  /* Línea eliminada: @apply space-y-4; (prohibido en Tailwind v4) */
+} 

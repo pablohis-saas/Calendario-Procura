@@ -1,0 +1,49 @@
+{
+  "name": "procura-cobros-backend",
+  "version": "1.0.0",
+  "description": "Backend para el módulo de cobros de ProCura",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node compile-simple.js",
+    "start": "node dist/index.js",
+    "dev": "nodemon index.ts",
+    "test": "jest",
+    "seed": "npx ts-node seed-test-data.ts",
+    "seed-services": "npx ts-node seed-services.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.11.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.2",
+    "@types/uuid": "^10.0.0",
+    "jest": "^30.0.0",
+    "nodemon": "^3.1.9",
+    "prisma": "^6.11.1",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "keywords": [
+    "procura",
+    "cobros",
+    "backend",
+    "express",
+    "prisma"
+  ],
+  "author": "Rodrigo Espinosa",
+  "license": "MIT"
+}

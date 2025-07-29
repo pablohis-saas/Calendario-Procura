@@ -70,6 +70,7 @@ jspm_packages/
 
 # Next.js build output
 .next
+out/
 
 # Nuxt.js build / generate output
 .nuxt
@@ -111,6 +112,13 @@ backups/
 # Test files
 test-system.js
 test-whatsapp.js
+*.test.js
+*.spec.js
+test-results/
 
 # WhatsApp temporary files
-*.tmp 
+*.tmp
+
+# EXCLUIR MÓDULO DE INVENTARIO (para tu compañero)
+inventory-module/
+Inventario/
