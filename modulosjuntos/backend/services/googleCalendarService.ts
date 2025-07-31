@@ -32,7 +32,45 @@ interface RefreshTokenResponse {
   token_type: string
 }
 
+// Cache simple para evitar requests repetidos
+const requestCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+
+// Rate limiting simple
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+const RATE_LIMIT = 100 // requests por minuto
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minuto
+
 class GoogleCalendarService {
+  private async checkRateLimit(userId: string): Promise<boolean> {
+    const now = Date.now()
+    const userLimit = rateLimitMap.get(userId)
+    
+    if (!userLimit || now > userLimit.resetTime) {
+      rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
+      return true
+    }
+    
+    if (userLimit.count >= RATE_LIMIT) {
+      return false
+    }
+    
+    userLimit.count++
+    return true
+  }
+
+  private async getCachedRequest(key: string): Promise<any | null> {
+    const cached = requestCache.get(key)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data
+    }
+    return null
+  }
+
+  private setCachedRequest(key: string, data: any): void {
+    requestCache.set(key, { data, timestamp: Date.now() })
+  }
+
   private async refreshTokenIfNeeded(userId: string): Promise<string | null> {
     try {
       const usuario = await prisma.usuario.findUnique({
@@ -96,6 +134,12 @@ class GoogleCalendarService {
 
   async createEvent(userId: string, eventData: GoogleCalendarEvent): Promise<string | null> {
     try {
+      // Verificar rate limit
+      if (!(await this.checkRateLimit(userId))) {
+        console.warn(`Rate limit excedido para usuario ${userId}`)
+        return null
+      }
+
       const accessToken = await this.refreshTokenIfNeeded(userId)
       if (!accessToken) {
         console.log(`No se pudo obtener token válido para usuario ${userId}`)
@@ -133,6 +177,12 @@ class GoogleCalendarService {
 
   async updateEvent(userId: string, googleEventId: string, eventData: GoogleCalendarEvent): Promise<boolean> {
     try {
+      // Verificar rate limit
+      if (!(await this.checkRateLimit(userId))) {
+        console.warn(`Rate limit excedido para usuario ${userId}`)
+        return false
+      }
+
       const accessToken = await this.refreshTokenIfNeeded(userId)
       if (!accessToken) {
         console.log(`No se pudo obtener token válido para usuario ${userId}`)
@@ -170,6 +220,12 @@ class GoogleCalendarService {
 
   async deleteEvent(userId: string, googleEventId: string): Promise<boolean> {
     try {
+      // Verificar rate limit
+      if (!(await this.checkRateLimit(userId))) {
+        console.warn(`Rate limit excedido para usuario ${userId}`)
+        return false
+      }
+
       const accessToken = await this.refreshTokenIfNeeded(userId)
       if (!accessToken) {
         console.log(`No se pudo obtener token válido para usuario ${userId}`)
@@ -192,10 +248,10 @@ class GoogleCalendarService {
         }
       )
 
-      console.log(`Evento eliminado de Google Calendar para usuario ${userId}: ${googleEventId}`)
+      console.log(`Evento eliminado en Google Calendar para usuario ${userId}: ${googleEventId}`)
       return true
     } catch (error) {
-      console.error(`Error eliminando evento de Google Calendar para usuario ${userId}:`, error)
+      console.error(`Error eliminando evento en Google Calendar para usuario ${userId}:`, error)
       if (axios.isAxiosError(error)) {
         console.error('Error de Google API:', error.response?.data)
       }
@@ -203,26 +259,25 @@ class GoogleCalendarService {
     }
   }
 
-  // Convertir cita local a formato de Google Calendar
   convertCitaToGoogleEvent(cita: any, paciente: any, usuario: any): GoogleCalendarEvent {
-    const startTime = new Date(cita.fecha_inicio)
-    const endTime = new Date(cita.fecha_fin)
+    const summary = `Cita: ${paciente.nombre} ${paciente.apellido}`
+    const description = `Paciente: ${paciente.nombre} ${paciente.apellido}\nTeléfono: ${paciente.telefono || 'No disponible'}\nEmail: ${paciente.email || 'No disponible'}\nDoctor: ${usuario.nombre} ${usuario.apellido}`
     
     return {
-      summary: `Cita: ${paciente.nombre} ${paciente.apellido}`,
-      description: cita.descripcion || `Cita con ${usuario.nombre} ${usuario.apellido}`,
+      summary,
+      description,
       start: {
-        dateTime: startTime.toISOString(),
-        timeZone: 'America/Mexico_City' // Ajustar según tu zona horaria
+        dateTime: new Date(cita.fecha_inicio).toISOString(),
+        timeZone: 'America/Mexico_City'
       },
       end: {
-        dateTime: endTime.toISOString(),
+        dateTime: new Date(cita.fecha_fin).toISOString(),
         timeZone: 'America/Mexico_City'
       },
       attendees: [
         {
-          email: paciente.email,
-          displayName: `${paciente.nombre} ${paciente.apellido}`
+          email: usuario.email,
+          displayName: `${usuario.nombre} ${usuario.apellido}`
         }
       ],
       reminders: {
@@ -241,13 +296,13 @@ class GoogleCalendarService {
     }
   }
 
-  // Verificar si un usuario tiene Google Calendar configurado
   async isUserConnected(userId: string): Promise<boolean> {
     try {
       const usuario = await prisma.usuario.findUnique({
         where: { id: userId },
         select: {
           googleAccessToken: true,
+          googleRefreshToken: true,
           googleTokenExpiry: true
         }
       })
@@ -260,7 +315,8 @@ class GoogleCalendarService {
       const isExpired = usuario.googleTokenExpiry && 
                        new Date() > usuario.googleTokenExpiry
 
-      return !isExpired
+      // Si está expirado pero tiene refresh token, considerarlo conectado
+      return isExpired ? !!usuario.googleRefreshToken : true
     } catch (error) {
       console.error(`Error verificando conexión de usuario ${userId}:`, error)
       return false

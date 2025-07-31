@@ -7,6 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organizacion {
+  id          String   @id @default(uuid())
+  nombre      String
+  ruc         String?
+  direccion   String?
+  telefono    String?
+  email       String?
+  logo_url    String?
+  color_primario String @default("#3B82F6")
+  color_secundario String @default("#1F2937")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  // Relaciones
+  usuarios    Usuario[]
+  consultorios Consultorio[]
+  servicios   Servicio[]
+  pacientes   Paciente[]
+  
+  @@map("organizaciones")
+}
+
 model Paciente {
   id                  String           @id @default(uuid())
   nombre              String
@@ -19,11 +41,16 @@ model Paciente {
   created_at          DateTime         @default(now())
   updated_at          DateTime         @updatedAt
   apellido            String
+  organizacion_id     String
   InventoryUsage      InventoryUsage[]
   citas               citas[]
   cobros              Cobro[]
   whatsappMessages    WhatsAppMessage[]
+  
+  // Relaciones
+  organizacion        Organizacion     @relation(fields: [organizacion_id], references: [id])
 
+  @@unique([email, organizacion_id])
   @@map("pacientes")
 }
 
@@ -37,12 +64,14 @@ model Usuario {
   rol              Rol
   apellido         String
   consultorio_id   String
+  organizacion_id  String
   bloqueos         BloqueoMedico[]        @relation("UsuarioBloqueo")
   citas            citas[]
   cobros           Cobro[]
   disponibilidades DisponibilidadMedico[] @relation("UsuarioDisponibilidad")
   historial        HistorialCobro[]
   consultorio      Consultorio            @relation(fields: [consultorio_id], references: [id])
+  organizacion     Organizacion           @relation(fields: [organizacion_id], references: [id])
   // --- Google Calendar Integration ---
   googleAccessToken  String?  // token de acceso
   googleRefreshToken String?  // token de refresco
@@ -52,19 +81,25 @@ model Usuario {
   whatsappTemplates  WhatsAppTemplate[]
   whatsappMessages   WhatsAppMessage[]
   whatsappReminders  WhatsAppReminder[]
+  
+  @@unique([email, organizacion_id])
   @@map("usuarios")
 }
 
 model Consultorio {
-  id         String              @id @default(uuid())
-  nombre     String
-  direccion  String
-  created_at DateTime            @default(now())
-  updated_at DateTime            @updatedAt
-  citas      citas[]
-  conceptos  CobroConcepto[]
-  precios    PrecioConsultorio[]
-  usuarios   Usuario[]
+  id              String              @id @default(uuid())
+  nombre          String
+  direccion       String
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+  organizacion_id String
+  citas           citas[]
+  conceptos       CobroConcepto[]
+  precios         PrecioConsultorio[]
+  usuarios        Usuario[]
+  
+  // Relaciones
+  organizacion    Organizacion        @relation(fields: [organizacion_id], references: [id])
 
   @@map("consultorios")
 }
@@ -133,13 +168,17 @@ model HistorialCobro {
 }
 
 model Servicio {
-  id          String          @id @default(uuid())
-  nombre      String
-  descripcion String?
-  precio_base Float
-  created_at  DateTime        @default(now())
-  updated_at  DateTime        @updatedAt
-  conceptos   CobroConcepto[]
+  id              String          @id @default(uuid())
+  nombre          String
+  descripcion     String?
+  precio_base     Float
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  organizacion_id String
+  conceptos       CobroConcepto[]
+  
+  // Relaciones
+  organizacion    Organizacion    @relation(fields: [organizacion_id], references: [id])
 
   @@map("servicios")
 }
