@@ -13,19 +13,67 @@ console.log("Antes de crear PrismaClient");
 
 export const getAllCobros = asyncHandler(async (req: Request, res: Response) => {
   console.log("Entrando a getAllCobros");
-  const cobros = await prisma.cobro.findMany({
-    include: {
-      paciente: true,
-      usuario: true,
-      conceptos: { 
-        include: { 
-          servicio: true 
-        } 
+  
+  // Obtener organizacion_id del usuario autenticado si está disponible
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  
+  let cobros: any[];
+  if (organizacionId) {
+    // Filtrar por organización usando SQL directo
+    cobros = await prisma.$queryRaw`
+      SELECT c.*, 
+             p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.telefono as paciente_telefono, p.email as paciente_email,
+             u.nombre as usuario_nombre, u.apellido as usuario_apellido, u.email as usuario_email
+      FROM cobros c
+      JOIN pacientes p ON c.paciente_id = p.id
+      JOIN usuarios u ON c.usuario_id = u.id
+      WHERE p.organizacion_id = ${organizacionId}::uuid
+      ORDER BY c.fecha_cobro DESC
+    ` as any[];
+    
+          // Obtener conceptos, historial y métodos de pago para cada cobro
+      for (const cobro of cobros) {
+        // Conceptos
+        const conceptos = await prisma.$queryRaw`
+          SELECT cc.*, s.nombre as servicio_nombre, s.precio_base
+          FROM cobro_conceptos cc
+          JOIN servicios s ON cc.servicio_id = s.id
+          WHERE cc.cobro_id = ${cobro.id}
+        ` as any[];
+        cobro.conceptos = conceptos;
+        
+        // Historial
+        const historial = await prisma.$queryRaw`
+          SELECT * FROM historial_cobros
+          WHERE cobro_id = ${cobro.id}
+          ORDER BY created_at DESC
+        ` as any[];
+        cobro.historial = historial;
+        
+        // Métodos de pago
+        const metodosPago = await prisma.$queryRaw`
+          SELECT * FROM metodos_pago_cobro
+          WHERE cobro_id = ${cobro.id}
+        ` as any[];
+        cobro.metodos_pago = metodosPago;
+      }
+  } else {
+    // Sin filtro de organización (comportamiento original)
+    cobros = await prisma.cobro.findMany({
+      include: {
+        paciente: true,
+        usuario: true,
+        conceptos: { 
+          include: { 
+            servicio: true 
+          } 
+        },
+        historial: true,
+        metodos_pago: true,
       },
-      historial: true,
-      metodos_pago: true,
-    },
-  });
+    });
+  }
+  
   res.json(cobros);
 });
 

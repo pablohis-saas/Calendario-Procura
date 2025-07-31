@@ -5,14 +5,61 @@ import googleCalendarService from '../services/googleCalendarService';
 
 export async function getAllCitas(req: Request, res: Response) {
   try {
-    const citas = await prisma.citas.findMany({
-      include: {
-        pacientes: true,
-        usuarios: true,
-        consultorios: true,
-      },
-      orderBy: { fecha_inicio: 'asc' },
-    });
+    // Obtener organizacion_id del usuario autenticado si está disponible
+    const organizacionId = (req as any).tenantFilter?.organizacion_id;
+    
+    let citas;
+    if (organizacionId) {
+      // Filtrar por organización usando SQL directo
+      citas = await prisma.$queryRaw`
+        SELECT c.*, 
+               p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.telefono as paciente_telefono, p.email as paciente_email,
+               u.nombre as usuario_nombre, u.apellido as usuario_apellido, u.email as usuario_email,
+               co.nombre as consultorio_nombre, co.direccion as consultorio_direccion
+        FROM citas c
+        JOIN pacientes p ON c.paciente_id = p.id
+        JOIN usuarios u ON c.usuario_id = u.id
+        JOIN consultorios co ON c.consultorio_id = co.id
+        WHERE p.organizacion_id = ${organizacionId}::uuid
+        ORDER BY c.fecha_inicio ASC
+      ` as any[];
+      
+      // Agregar las relaciones como objetos anidados para compatibilidad
+      for (const cita of citas) {
+        cita.pacientes = {
+          id: cita.paciente_id,
+          nombre: cita.paciente_nombre,
+          apellido: cita.paciente_apellido,
+          telefono: cita.paciente_telefono,
+          email: cita.paciente_email,
+          organizacion_id: organizacionId
+        };
+        cita.usuarios = {
+          id: cita.usuario_id,
+          nombre: cita.usuario_nombre,
+          apellido: cita.usuario_apellido,
+          email: cita.usuario_email,
+          organizacion_id: organizacionId
+        };
+        cita.consultorios = {
+          id: cita.consultorio_id,
+          nombre: cita.consultorio_nombre,
+          direccion: cita.consultorio_direccion,
+          organizacion_id: organizacionId
+        };
+      }
+    } else {
+      // Sin filtro de organización (comportamiento original)
+      citas = await prisma.citas.findMany({
+        include: {
+          pacientes: true,
+          usuarios: true,
+          consultorios: true,
+        },
+        orderBy: { fecha_inicio: 'asc' },
+      });
+    }
+    
     res.json(citas);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
