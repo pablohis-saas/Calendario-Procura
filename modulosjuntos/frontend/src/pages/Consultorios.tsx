@@ -3,6 +3,7 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Label } from '../components/ui/label';
+import axios from 'axios';
 
 interface Consultorio {
   id: string;
@@ -23,9 +24,8 @@ export default function Consultorios() {
   async function fetchConsultorios() {
     setLoading(true);
     try {
-      const res = await fetch('/api/consultorios');
-      const data = await res.json();
-      setConsultorios(data);
+      const res = await axios.get('/api/consultorios');
+      setConsultorios(res.data);
     } catch {
       alert('Error al cargar consultorios');
     } finally {
@@ -38,12 +38,7 @@ export default function Consultorios() {
     if (!nombre || !direccion) return alert('Completa todos los campos');
     setLoading(true);
     try {
-      const res = await fetch('/api/consultorios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, direccion })
-      });
-      if (!res.ok) throw new Error();
+      await axios.post('/api/consultorios', { nombre, direccion });
       setNombre('');
       setDireccion('');
       fetchConsultorios();

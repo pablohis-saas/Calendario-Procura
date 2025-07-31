@@ -15,7 +15,10 @@ export interface CategoryInventoryDto {
 }
 
 export interface ExpirationAlertDto {
-    productName: string;
+    Product?: {
+        name: string;
+        category?: string;
+    };
     batchNumber: string;
     expiryDate: Date;
     quantity: number;

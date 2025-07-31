@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from "react-big-calendar";
+import axios from "axios";
 import { addDays, addWeeks, addMonths, addMinutes, format, parse, startOfWeek, getDay, isBefore, isAfter, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -197,8 +198,8 @@ export default function Calendario() {
 
   const cargarEventos = async () => {
     try {
-      const res = await fetch("/api/citas");
-      const data = await res.json();
+      const res = await axios.get("/api/citas");
+      const data = res.data;
       
       // Transformar los datos del backend al formato que espera el calendario
       let eventosTransformados: any[] = [];
@@ -342,30 +343,19 @@ export default function Calendario() {
     }
     if (editMode) {
       try {
-        const res = await fetch(`/api/citas/${form.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paciente_id: form.pacienteId,
-            fecha_inicio: form.start,
-            fecha_fin: form.end,
-            descripcion: form.descripcion,
-            estado: form.estado || "PROGRAMADA",
-            color: eventTypes.find(t => t.value === form.type)?.color || "#3B82F6",
-            type: form.type,
-            usuario_id: form.usuario_id,
-            consultorio_id: form.consultorio_id,
-          }),
+        const res = await axios.put(`/api/citas/${form.id}`, {
+          paciente_id: form.pacienteId,
+          fecha_inicio: form.start,
+          fecha_fin: form.end,
+          descripcion: form.descripcion,
+          estado: form.estado || "PROGRAMADA",
+          color: eventTypes.find(t => t.value === form.type)?.color || "#3B82F6",
+          type: form.type,
+          usuario_id: form.usuario_id,
+          consultorio_id: form.consultorio_id,
         });
-        if (res.ok) {
-          await cargarEventos();
-          toast.success("Cita actualizada correctamente");
-        } else {
-          const errData = await res.json();
-          setError(errData.error || 'Error al actualizar la cita');
-          toast.error(errData.error || 'Error al actualizar la cita');
-          return;
-        }
+        await cargarEventos();
+        toast.success("Cita actualizada correctamente");
       } catch (error) {
         setError('Error inesperado al actualizar la cita');
         toast.error('Error inesperado al actualizar la cita');
@@ -404,20 +394,9 @@ export default function Calendario() {
           payload.regla_recurrencia = rrule;
           payload.id_serie = form.id || undefined;
         }
-        const res = await fetch("/api/citas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          await cargarEventos();
-          toast.success("Cita creada correctamente");
-        } else {
-          const errData = await res.json();
-          setError(errData.error || 'Error al crear la cita');
-          toast.error(errData.error || 'Error al crear la cita');
-          return;
-        }
+        const res = await axios.post("/api/citas", payload);
+        await cargarEventos();
+        toast.success("Cita creada correctamente");
       } catch (error) {
         setError('Error inesperado al crear la cita');
         toast.error('Error inesperado al crear la cita');
@@ -453,15 +432,9 @@ export default function Calendario() {
       return;
     }
     try {
-      const res = await fetch(`/api/citas/${form.id}`, { method: "DELETE" });
-      if (res.ok) {
-        await cargarEventos();
-        toast.success("Cita eliminada correctamente");
-      } else {
-        const errData = await res.json();
-        setError(errData.error || 'Error al eliminar la cita');
-        toast.error(errData.error || 'Error al eliminar la cita');
-      }
+      await axios.delete(`/api/citas/${form.id}`);
+      await cargarEventos();
+      toast.success("Cita eliminada correctamente");
     } catch (error) {
       setError('Error inesperado al eliminar la cita');
       toast.error('Error inesperado al eliminar la cita');
@@ -520,10 +493,9 @@ export default function Calendario() {
     setModalPacienteId(pacienteId);
     setModalLoading(true);
     setModalError(null);
-    fetch(`/api/pacientes/${pacienteId}`)
-      .then(r => r.json())
-      .then(data => {
-        setModalPaciente(data);
+    axios.get(`/api/pacientes/${pacienteId}`)
+      .then(r => {
+        setModalPaciente(r.data);
         setModalLoading(false);
       })
       .catch(err => {

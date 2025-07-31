@@ -9,6 +9,7 @@ import { getUsuarios, crearUsuario } from "@/services/usuariosService";
 import Consultorios from './Consultorios';
 import GoogleCalendarSync from '@/components/GoogleCalendarSync';
 import { Combobox } from "@headlessui/react";
+import axios from "axios";
 
 const usuarioSchema = z.object({
   rol: z.string().min(1, "El rol es requerido"),
@@ -28,6 +29,8 @@ const roles = [
 ];
 
 export default function UsuariosYConsultorios() {
+  console.log('🔍 Componente UsuariosYConsultorios renderizando...');
+  
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,9 +67,8 @@ export default function UsuariosYConsultorios() {
 
   const fetchConsultorios = async () => {
     try {
-      const res = await fetch('/api/consultorios');
-      const data = await res.json();
-      setConsultorios(data);
+      const res = await axios.get('/api/consultorios');
+      setConsultorios(res.data);
     } catch {
       setConsultorios([]);
     }
@@ -98,190 +100,207 @@ export default function UsuariosYConsultorios() {
     <div className="w-full max-w-[1600px] pt-10">
       <div className="flex items-center justify-between mb-12">
         <h1 className="text-4xl font-extrabold text-[#4285f2]">Gestión de Usuarios y Consultorios</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#4285f2] hover:bg-[#3367d6] text-white">
-              Agregar Usuario
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre
-                  </label>
-                  <Input
-                    {...register("nombre")}
-                    placeholder="Nombre"
-                    className={errors.nombre ? "border-red-500" : ""}
-                  />
-                  {errors.nombre && (
-                    <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Apellido
-                  </label>
-                  <Input
-                    {...register("apellido")}
-                    placeholder="Apellido"
-                    className={errors.apellido ? "border-red-500" : ""}
-                  />
-                  {errors.apellido && (
-                    <p className="text-red-500 text-xs mt-1">{errors.apellido.message}</p>
-                  )}
-                </div>
-              </div>
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-[#4285f2] hover:bg-[#3367d6] text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-colors"
+        >
+          Agregar Usuario
+        </Button>
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+      {/* Mensajes de éxito y error */}
+      {successMsg && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Tabla de usuarios */}
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
-                </label>
-                <Input
-                  {...register("email")}
-                  type="email"
-                  placeholder="email@ejemplo.com"
-                  className={errors.email ? "border-red-500" : ""}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Teléfono
-                </label>
-                <Input
-                  {...register("telefono")}
-                  placeholder="Teléfono"
-                  className={errors.telefono ? "border-red-500" : ""}
-                />
-                {errors.telefono && (
-                  <p className="text-red-500 text-xs mt-1">{errors.telefono.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Rol
-                </label>
-                <select
-                  {...register("rol")}
-                  className={`w-full p-2 border rounded-md ${
-                    errors.rol ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Seleccionar rol</option>
-                  {roles.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.rol && (
-                  <p className="text-red-500 text-xs mt-1">{errors.rol.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Consultorio
-                </label>
-                <select
-                  {...register("consultorio_id")}
-                  className={`w-full p-2 border rounded-md ${
-                    errors.consultorio_id ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Seleccionar consultorio</option>
-                  {consultorios.map((consultorio) => (
-                    <option key={consultorio.id} value={consultorio.id}>
-                      {consultorio.nombre}
-                    </option>
-                  ))}
-                </select>
-                {errors.consultorio_id && (
-                  <p className="text-red-500 text-xs mt-1">{errors.consultorio_id.message}</p>
-                )}
-              </div>
-
-              {errorMsg && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                  {errorMsg}
-                </div>
-              )}
-
-              {successMsg && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                  {successMsg}
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-[#4285f2] hover:bg-[#3367d6] text-white"
-                >
-                  {loading ? "Registrando..." : "Registrar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Google Calendar Sync Section */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Sincronización con Google Calendar</h2>
-        <GoogleCalendarSync />
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-xl overflow-x-auto mt-12 mb-16">
-        <h2 className="text-2xl font-bold text-[#4285f2] mb-4">Usuarios</h2>
-        <table className="min-w-full border text-xl">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-8 py-5 text-gray-700 text-lg">ID</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Rol</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Nombre</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Apellido</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Email</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Teléfono</th>
-              <th className="border px-8 py-5 text-gray-700 text-lg">Consultorio</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuarios.map((usuario) => (
-              <tr key={usuario.id} className="hover:bg-gray-50 transition">
-                <td className="border px-8 py-5 text-gray-900 text-lg">{usuario.id}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{getRolLabel(usuario.rol)}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{usuario.nombre}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{usuario.apellido}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{usuario.email}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{usuario.telefono}</td>
-                <td className="border px-8 py-5 text-gray-900 text-lg">{consultorios.find(c => c.id === usuario.consultorio_id)?.nombre || '-'}</td>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {usuarios.map((usuario) => (
+                <tr key={usuario.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {usuario.nombre} {usuario.apellido}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {usuario.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {getRolLabel(usuario.rol)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {usuario.consultorio?.nombre || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button className="text-indigo-600 hover:text-indigo-900 mr-3">
+                      Editar
+                    </button>
+                    <button className="text-red-600 hover:text-red-900">
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div className="mt-20">
-        <h2 className="text-2xl font-bold text-[#4285f2] mb-4">Consultorios</h2>
+
+      {/* Modal para agregar usuario */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Agregar Nuevo Usuario</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rol
+              </label>
+              <select
+                {...register("rol")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {roles.map((role) => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+              {errors.rol && (
+                <p className="text-red-500 text-sm mt-1">{errors.rol.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre
+              </label>
+              <Input
+                {...register("nombre")}
+                placeholder="Nombre"
+                className="w-full"
+              />
+              {errors.nombre && (
+                <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Apellido
+              </label>
+              <Input
+                {...register("apellido")}
+                placeholder="Apellido"
+                className="w-full"
+              />
+              {errors.apellido && (
+                <p className="text-red-500 text-sm mt-1">{errors.apellido.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <Input
+                {...register("email")}
+                type="email"
+                placeholder="Email"
+                className="w-full"
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Teléfono
+              </label>
+              <Input
+                {...register("telefono")}
+                placeholder="Teléfono"
+                className="w-full"
+              />
+              {errors.telefono && (
+                <p className="text-red-500 text-sm mt-1">{errors.telefono.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Consultorio
+              </label>
+              <select
+                {...register("consultorio_id")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar consultorio</option>
+                {consultorios.map((consultorio) => (
+                  <option key={consultorio.id} value={consultorio.id}>
+                    {consultorio.nombre}
+                  </option>
+                ))}
+              </select>
+              {errors.consultorio_id && (
+                <p className="text-red-500 text-sm mt-1">{errors.consultorio_id.message}</p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sección de consultorios */}
+      <div className="mt-16">
         <Consultorios />
+      </div>
+
+      {/* Sección de sincronización con Google Calendar */}
+      <div className="mt-16">
+        <GoogleCalendarSync />
       </div>
     </div>
   );

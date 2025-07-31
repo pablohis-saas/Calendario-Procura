@@ -3,6 +3,7 @@ import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
 import { Calendar, CheckCircle, XCircle, RefreshCw, ExternalLink } from 'lucide-react'
+import axios from 'axios'
 
 interface GoogleCalendarStatus {
   connected: boolean
@@ -21,12 +22,9 @@ function GoogleCalendarSync() {
   const checkConnectionStatus = async () => {
     try {
       // Temporalmente sin autenticación para testing
-      const response = await fetch('/api/google/status')
+      const response = await axios.get('/api/google/status')
 
-      if (response.ok) {
-        const data = await response.json()
-        setStatus(data)
-      }
+      setStatus(response.data)
     } catch (error) {
       console.error('Error verificando estado:', error)
     }
@@ -37,24 +35,13 @@ function GoogleCalendarSync() {
     setIsConnecting(true)
     try {
       // Temporalmente sin autenticación para testing
-      const response = await fetch('/api/google/oauth-init', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await axios.post('/api/google/oauth-init')
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.authUrl) {
-          // Redirigir a Google OAuth
-          window.location.href = data.authUrl
-        } else {
-          alert('Error: No se recibió URL de autorización')
-        }
+      if (response.data.authUrl) {
+        // Redirigir a Google OAuth
+        window.location.href = response.data.authUrl
       } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Error desconocido'}`)
+        alert('Error: No se recibió URL de autorización')
       }
     } catch (error) {
       console.error('Error conectando Google Calendar:', error)
@@ -71,23 +58,15 @@ function GoogleCalendarSync() {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const response = await fetch('/api/google/disconnect', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      await axios.post('/api/google/disconnect')
 
-      if (response.ok) {
-        setStatus({
-          connected: false,
-          hasRefreshToken: false,
-          isExpired: false,
-          calendarId: ''
-        })
-        alert('Desconectado de Google Calendar')
-      }
+      setStatus({
+        connected: false,
+        hasRefreshToken: false,
+        isExpired: false,
+        calendarId: ''
+      })
+      alert('Desconectado de Google Calendar')
     } catch (error) {
       console.error('Error desconectando:', error)
       alert('Error al desconectar')
