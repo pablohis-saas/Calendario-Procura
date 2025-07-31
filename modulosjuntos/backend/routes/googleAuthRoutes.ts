@@ -5,7 +5,7 @@ import crypto from 'crypto'
 
 const router = express.Router()
 
-// Middleware para requerir autenticación JWT
+// Middleware para requerir autenticación JWT o Multi-tenant
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!(req as any).user || !(req as any).user.id) {
     return res.status(401).json({ error: 'No autenticado' })
@@ -162,11 +162,13 @@ router.get('/google/oauth-callback', async (req: Request, res: Response) => {
   }
 })
 
-  // Endpoint para verificar estado de sincronización (temporalmente sin auth para testing)
-router.get('/google/status', async (req: Request, res: Response) => {
+  // Endpoint para verificar estado de sincronización
+router.get('/google/status', requireAuth, async (req: Request, res: Response) => {
   try {
-    // Temporalmente usar el primer usuario para testing
-    const usuario = await prisma.usuario.findFirst({
+    const userId = (req as any).user.id
+    
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
       select: {
         googleAccessToken: true,
         googleRefreshToken: true,

@@ -4,7 +4,7 @@ import { PrismaClient, MovementType } from '@prisma/client';
 import prisma from '../prisma';
 
 // Función para adaptar los datos del frontend al formato del backend
-function adaptFrontendData(frontendData: any) {
+async function adaptFrontendData(frontendData: any, req: Request) {
   // Validar que los datos requeridos estén presentes
   if (!frontendData.nombrePaciente) {
     throw new Error('nombrePaciente es requerido');
@@ -16,9 +16,23 @@ function adaptFrontendData(frontendData: any) {
     throw new Error('items debe ser un array válido');
   }
 
+  // Obtener el usuario autenticado
+  const userId = (req as any).user?.id;
+  const userEmail = (req as any).user?.email;
+  
+  // Buscar el usuario de inventario por email
+  const inventoryUser = await prisma.user.findUnique({
+    where: { email: userEmail },
+    select: { id: true, sedeId: true }
+  });
+  
+  if (!inventoryUser) {
+    throw new Error('Usuario de inventario no encontrado');
+  }
+  
   return {
-    sedeId: 'sede-tecamachalco', // Por defecto, se puede hacer configurable
-    userId: 'user-default', // Por defecto, se puede obtener del JWT
+    sedeId: inventoryUser.sedeId,
+    userId: inventoryUser.id,
     pacienteId: frontendData.pacienteId,
     nombrePaciente: frontendData.nombrePaciente,
     tipoTratamiento: frontendData.tipoTratamiento,
@@ -64,7 +78,7 @@ export const registerInventoryExit = async (req: Request, res: Response) => {
   try {
     console.log('📥 Received data from frontend:', req.body);
     // Adaptar los datos del frontend al formato del backend
-    const adaptedData = adaptFrontendData(req.body);
+    const adaptedData = await adaptFrontendData(req.body, req);
     console.log('🔄 Adapted data for backend:', adaptedData);
     const result = await processInventoryUsage(adaptedData);
     return res.status(201).json({ success: true, data: result });

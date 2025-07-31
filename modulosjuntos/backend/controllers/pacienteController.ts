@@ -3,7 +3,24 @@ import prisma from '../prisma';
 
 export async function getAllPacientes(req: Request, res: Response) {
   try {
-    const pacientes = await prisma.paciente.findMany();
+    // Obtener organizacion_id del usuario autenticado si está disponible
+    const organizacionId = (req as any).tenantFilter?.organizacion_id;
+    
+    let pacientes;
+    if (organizacionId) {
+      // Filtrar por organización usando SQL directo
+      pacientes = await prisma.$queryRaw`
+        SELECT * FROM pacientes 
+        WHERE organizacion_id = ${organizacionId}::uuid
+        ORDER BY nombre ASC, apellido ASC
+      `;
+    } else {
+      // Sin filtro de organización (comportamiento original)
+      pacientes = await prisma.paciente.findMany({
+        orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }]
+      });
+    }
+    
     res.json(pacientes);
   } catch (error: any) {
     console.error('Error en getAllPacientes:', error);
@@ -53,16 +70,20 @@ export async function createPaciente(req: Request, res: Response) {
       return res.status(400).json({ error: 'Ya existe un paciente con ese email o teléfono.' });
     }
 
-    const paciente = await prisma.paciente.create({
-      data: {
-        nombre,
-        apellido,
-        fecha_nacimiento: new Date(fecha_nacimiento),
-        genero,
-        telefono,
-        email,
-      },
-    });
+    // Obtener organizacion_id del usuario autenticado
+    const organizacionId = (req as any).tenantFilter?.organizacion_id;
+    
+    if (!organizacionId) {
+      return res.status(400).json({ error: 'No se pudo determinar la organización del usuario' });
+    }
+    
+    // Usar SQL directo para evitar problemas de tipos
+    const result = await prisma.$queryRaw`
+      INSERT INTO pacientes (id, nombre, apellido, fecha_nacimiento, genero, telefono, email, organizacion_id, created_at, updated_at)
+      VALUES (gen_random_uuid(), ${nombre}, ${apellido}, ${new Date(fecha_nacimiento)}, ${genero}, ${telefono}, ${email}, ${organizacionId}::uuid, NOW(), NOW())
+      RETURNING *
+    `;
+    const paciente = (result as any[])[0];
     res.json(paciente);
   } catch (error: any) {
     console.error('Error en createPaciente:', error);
@@ -110,16 +131,34 @@ export async function searchPacientes(req: Request, res: Response) {
     if (!q || typeof q !== 'string' || q.trim().length < 2) {
       return res.status(400).json({ error: 'Query demasiado corto' });
     }
-    const pacientes = await prisma.paciente.findMany({
-      where: {
-        OR: [
-          { nombre: { contains: q } },
-          { apellido: { contains: q } },
-        ],
-      },
-      orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }],
-      take: 10,
-    });
+    
+    // Obtener organizacion_id del usuario autenticado si está disponible
+    const organizacionId = (req as any).tenantFilter?.organizacion_id;
+    
+    let pacientes;
+    if (organizacionId) {
+      // Filtrar por organización usando SQL directo
+      pacientes = await prisma.$queryRaw`
+        SELECT * FROM pacientes 
+        WHERE organizacion_id = ${organizacionId}
+        AND (nombre ILIKE ${`%${q}%`} OR apellido ILIKE ${`%${q}%`})
+        ORDER BY nombre ASC, apellido ASC
+        LIMIT 10
+      `;
+    } else {
+      // Sin filtro de organización (comportamiento original)
+      pacientes = await prisma.paciente.findMany({
+        where: {
+          OR: [
+            { nombre: { contains: q } },
+            { apellido: { contains: q } },
+          ],
+        },
+        orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }],
+        take: 10,
+      });
+    }
+    
     res.json(pacientes);
   } catch (error: any) {
     console.error('Error en searchPacientes:', error);

@@ -21,12 +21,41 @@ router.post('/login', async (req, res) => {
       res.status(401).json({ error: 'Contraseña incorrecta' });
       return;
     }
+    // Obtener la organización del usuario
+    const userWithOrg = await prisma.$queryRaw`
+      SELECT u.*, o.id as organizacion_id, o.nombre as organizacion_nombre
+      FROM usuarios u
+      JOIN organizaciones o ON u.organizacion_id = o.id
+      WHERE u.id = ${user.id}::text
+    `;
+    
+    const userData = (userWithOrg as any[])[0];
+    
+    // Obtener el sedeId del usuario de inventario
+    const inventoryUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { sedeId: true }
+    });
+    
     const token = jwt.sign(
-      { id: user.id, email: user.email, rol: user.rol },
+      { 
+        id: user.id, 
+        email: user.email, 
+        rol: user.rol,
+        organizacion_id: userData.organizacion_id,
+        organizacion_nombre: userData.organizacion_nombre
+      },
       process.env.JWT_SECRET as string,
       { expiresIn: '1h' }
     );
-    res.json({ token, user });
+    
+    // Incluir sedeId en la respuesta del usuario
+    const userResponse = {
+      ...user,
+      sedeId: inventoryUser?.sedeId || 'sede-tecamachalco'
+    };
+    
+    res.json({ token, user: userResponse });
   } catch (error) {
     console.error('Error en /login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
