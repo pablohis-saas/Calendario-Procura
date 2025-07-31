@@ -1,12 +1,31 @@
 import axios from 'axios';
 
+// Interceptor para agregar token a todas las peticiones
+axios.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
+
 // Interceptor global para manejar expiración de sesión o token inválido
 axios.interceptors.response.use(
   response => response,
   error => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      localStorage.removeItem('token')
-      window.location.reload()
+      // Solo limpiar token si es un error de autenticación real, no de middleware
+      if (error.response.data?.error?.includes('autenticado') || 
+          error.response.data?.error?.includes('token')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.reload()
+      }
     }
     return Promise.reject(error)
   }

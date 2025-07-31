@@ -21,21 +21,27 @@ export function ConceptosProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const loadServicios = async () => {
+    if (loading) return; // Evitar múltiples llamadas simultáneas
     setLoading(true);
     setError(null);
     try {
       const data = await api.getAllServicios();
       setServicios(data);
     } catch (err: any) {
+      console.error('Error loading servicios:', err);
       setError("Error al cargar servicios");
+      setServicios([]); // Establecer array vacío en caso de error
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadServicios();
-  }, []);
+    // Solo cargar si no hay servicios y no está cargando
+    if (servicios.length === 0 && !loading) {
+      loadServicios();
+    }
+  }, []); // Dependencias vacías para que solo se ejecute una vez
 
   const addServicio = async (s: Omit<Servicio, "id">) => {
     setError(null);
