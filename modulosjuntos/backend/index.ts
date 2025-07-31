@@ -1,6 +1,9 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import compression from 'compression';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import pacienteRoutes from './routes/pacienteRoutes';
 import cobroRoutes from './routes/cobroRoutes';
 import usuarioRoutes from './routes/usuarioRoutes';
@@ -9,6 +12,7 @@ import precioConsultorioRoutes from './routes/precioConsultorioRoutes';
 import cobroConceptoRoutes from './routes/cobroConceptoRoutes';
 import historialCobroRoutes from './routes/historialCobroRoutes';
 import servicioRoutes from './routes/servicioRoutes';
+import organizacionRoutes from './routes/organizacionRoutes';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
@@ -18,27 +22,74 @@ import disponibilidadMedicoRoutes from './routes/disponibilidadMedicoRoutes'
 import bloqueoMedicoRoutes from './routes/bloqueoMedicoRoutes'
 import googleAuthRoutes from './routes/googleAuthRoutes'
 import whatsappRoutes from './routes/whatsappRoutes'
+import { authenticateMultiTenant } from './middleware/tenantMiddleware'
+import prisma from './prisma'
+import monitoringService from './services/monitoringService'
 dotenv.config();
 
-console.log("Iniciando backend...");
+console.log("Iniciando backend optimizado para producción...");
 
+// Manejo global de errores no capturados
 process.on('uncaughtException', function (err: Error) {
-  console.error('Excepción no capturada:', err);
+  console.error('🚨 Excepción no capturada:', err);
+  // En producción, podrías enviar esto a un servicio de monitoreo
 });
 
 process.on('unhandledRejection', function (err: any) {
-  console.error('Promesa no manejada:', err);
+  console.error('🚨 Promesa no manejada:', err);
+  // En producción, podrías enviar esto a un servicio de monitoreo
 });
 
 const app: Application = express();
 
-// Log global de todas las peticiones entrantes
-app.use((req, res, next) => {
-  console.log('LLEGA PETICION:', req.method, req.url)
-  next()
-})
+// SECURIDAD: Helmet para headers de seguridad
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
 
-// Middleware de autenticación JWT
+// COMPRESIÓN: Comprimir todas las respuestas
+app.use(compression());
+
+// RATE LIMITING: Proteger contra ataques de fuerza bruta
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // máximo 100 requests por ventana
+  message: {
+    error: 'Demasiadas peticiones desde esta IP, intenta de nuevo en 15 minutos'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiting a todas las rutas
+app.use(limiter);
+
+// Rate limiting más estricto para autenticación
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // máximo 5 intentos de login por ventana
+  message: {
+    error: 'Demasiados intentos de login, intenta de nuevo en 15 minutos'
+  },
+  skipSuccessfulRequests: true,
+});
+
+// Log global de todas las peticiones entrantes (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log('📥 PETICIÓN:', req.method, req.url, new Date().toISOString());
+    next();
+  });
+}
+
+// Middleware de autenticación JWT básico (para rutas que no necesitan multi-tenant)
 function authenticateJWT(req: Request, res: Response, next: Function) {
   const authHeader = req.headers.authorization;
   if (authHeader) {
@@ -89,29 +140,80 @@ app.get('/', (req: Request, res: Response) => {
   res.send('API de ProCura Cobros funcionando');
 });
 
-app.use('/api/pacientes', pacienteRoutes);
+// Health check endpoint para monitoring
+app.get('/health', (req: Request, res: Response) => {
+  const health = monitoringService.getHealthCheck();
+  res.json(health);
+});
 
-// Rutas de cobros con autenticación JWT para operaciones de escritura
-app.use('/api/cobros', (req, res, next) => {
-  // Permitir GET sin autenticación
-  if (req.method === 'GET') {
-    return next();
-  }
-  // Requerir autenticación para POST, PUT, DELETE
-  authenticateJWT(req, res, next);
-}, cobroRoutes);
+// Endpoint para métricas de performance (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  app.get('/metrics', (req: Request, res: Response) => {
+    res.json({
+      performance: monitoringService.getPerformanceStats(),
+      errors: monitoringService.getErrorStats()
+    });
+  });
+}
 
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/consultorios', consultorioRoutes);
+// Rutas con autenticación multi-tenant (filtrado por organización/consultorio)
+app.use('/api/pacientes', authenticateMultiTenant, pacienteRoutes);
+app.use('/api/usuarios', authenticateMultiTenant, usuarioRoutes);
+app.use('/api/consultorios', authenticateMultiTenant, consultorioRoutes);
+app.use('/api/servicios', authenticateMultiTenant, servicioRoutes);
+app.use('/api/citas', authenticateMultiTenant, citaRoutes);
+
+// Rutas de cobros con autenticación multi-tenant
+app.use('/api/cobros', authenticateMultiTenant, cobroRoutes);
+
+// Rutas con autenticación JWT básico (no necesitan filtrado)
 app.use('/api/precios-consultorio', precioConsultorioRoutes);
 app.use('/api/cobro-conceptos', cobroConceptoRoutes);
 app.use('/api/historial-cobros', historialCobroRoutes);
-app.use('/api/servicios', servicioRoutes);
+app.use('/api/organizaciones', organizacionRoutes);
 app.use('/api', authRoutes);
-app.use('/api', inventoryRoutes);
-app.use('/api/citas', citaRoutes);
+app.use('/api', authenticateMultiTenant, inventoryRoutes);
 app.use('/api/disponibilidad-medico', disponibilidadMedicoRoutes)
 app.use('/api/bloqueo-medico', bloqueoMedicoRoutes)
+
+// Ruta específica para status de Google Calendar con autenticación multi-tenant
+app.get('/api/google/status', authenticateMultiTenant, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id
+    
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        googleAccessToken: true,
+        googleRefreshToken: true,
+        googleTokenExpiry: true,
+        googleCalendarId: true
+      }
+    })
+
+    if (!usuario?.googleAccessToken) {
+      return res.json({ 
+        connected: false, 
+        message: 'No conectado a Google Calendar' 
+      })
+    }
+
+    // Verificar si el token ha expirado
+    const isExpired = usuario.googleTokenExpiry && 
+                     new Date() > usuario.googleTokenExpiry
+
+    return res.json({
+      connected: true,
+      hasRefreshToken: !!usuario.googleRefreshToken,
+      isExpired,
+      calendarId: usuario.googleCalendarId
+    })
+
+  } catch (error) {
+    console.error('Error verificando estado:', error)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+});
 
 // Rutas de Google Calendar (algunas requieren autenticación JWT)
 app.use('/api', googleAuthRoutes);
