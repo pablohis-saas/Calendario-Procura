@@ -128,7 +128,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
           </DialogHeader>
           <form onSubmit={handleAdd} className="flex flex-col gap-8 mt-6">
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Nombre *</label>
+              <label className="block text-lg font-medium mb-2 text-white">Nombre *</label>
               <input
                 type="text"
                 className="w-full h-12 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -138,7 +138,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
               />
             </div>
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Precio Base *</label>
+              <label className="block text-lg font-medium mb-2 text-white">Precio Base *</label>
               <input
                 type="number"
                 className="w-full h-12 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -149,7 +149,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
               />
             </div>
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Descripción</label>
+              <label className="block text-lg font-medium mb-2 text-white">Descripción</label>
               <textarea
                 className="w-full h-20 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 value={descripcion}

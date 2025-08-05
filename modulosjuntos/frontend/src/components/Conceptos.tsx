@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useConceptos } from "./ConceptosContext";
+import { useConceptos } from "../hooks/useConceptos";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { useForm } from "react-hook-form";
 
 export default function Conceptos({ embedded = false }: { embedded?: boolean }) {
-  const { servicios, addServicio, loading, error, editServicio, deleteServicio } = useConceptos();
+  const { servicios, addServicio, isLoading: loading, error, editServicio, removeServicio: deleteServicio } = useConceptos();
   const [showForm, setShowForm] = useState(false);
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
@@ -66,7 +66,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
   };
 
   return (
-    <div className={embedded ? "" : "w-full max-w-[1600px] pt-10"}>
+    <div className={embedded ? "" : "w-full max-w-[1600px] pt-10 h-full overflow-y-auto"}>
       <div className="flex items-center justify-between mb-12">
         <h1 className="text-4xl font-extrabold text-[#4285f2]">Gestión de Conceptos</h1>
         <Button
@@ -83,9 +83,30 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
       )}
       {loading && <div className="mb-4 text-blue-600">Cargando conceptos...</div>}
       {error && <div className="mb-4 text-red-600">{error}</div>}
-      <div className="bg-white rounded-2xl shadow-xl overflow-x-auto mt-12">
+      <div className="bg-white rounded-2xl shadow-xl overflow-x-auto overflow-y-auto max-h-[70vh] mt-12 relative table-scrollbar smooth-scroll">
+        <div className="absolute top-2 right-2 text-xs text-gray-400 bg-white px-2 py-1 rounded shadow-sm">
+          📜 Scroll para ver más conceptos
+        </div>
+        {servicios.length > 10 && (
+          <div className="absolute bottom-2 right-2">
+            <Button
+              onClick={() => {
+                const tableContainer = document.querySelector('.table-scrollbar');
+                if (tableContainer) {
+                  tableContainer.scrollTo({
+                    top: tableContainer.scrollHeight,
+                    behavior: 'smooth'
+                  });
+                }
+              }}
+              className="bg-blue-500 text-white px-3 py-1 text-xs rounded shadow-sm hover:bg-blue-600"
+            >
+              ⬇️ Ir al final
+            </Button>
+          </div>
+        )}
         <table className="min-w-full border text-xl">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="border px-8 py-5 text-gray-700 text-lg">ID</th>
               <th className="border px-8 py-5 text-gray-700 text-lg">Nombre</th>
@@ -128,7 +149,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
           </DialogHeader>
           <form onSubmit={handleAdd} className="flex flex-col gap-8 mt-6">
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Nombre *</label>
+              <label className="block text-lg font-medium mb-2 text-white">Nombre *</label>
               <input
                 type="text"
                 className="w-full h-12 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -138,7 +159,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
               />
             </div>
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Precio Base *</label>
+              <label className="block text-lg font-medium mb-2 text-white">Precio Base *</label>
               <input
                 type="number"
                 className="w-full h-12 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -149,7 +170,7 @@ export default function Conceptos({ embedded = false }: { embedded?: boolean }) 
               />
             </div>
             <div>
-              <label className="block text-lg font-medium mb-2 text-gray-900">Descripción</label>
+              <label className="block text-lg font-medium mb-2 text-white">Descripción</label>
               <textarea
                 className="w-full h-20 px-4 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 value={descripcion}

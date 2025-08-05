@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getCobros } from "@/services/cobrosService";
+import { useCobros } from "@/hooks/useCobros";
 import Conceptos from "@/components/Conceptos";
 import Cobros from "@/components/Cobros";
 import { Button } from "./ui/button";
@@ -59,28 +59,63 @@ export default function Dashboard() {
   const [showConceptos, setShowConceptos] = useState(false);
   const [filteredCobros, setFilteredCobros] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadMetrics();
-  }, []);
+  // Usar el hook de cobros
+  const { cobros, isLoading: cobrosLoading } = useCobros();
 
-  const loadMetrics = async () => {
-    try {
-      setLoading(true);
-      const cobros = await getCobros();
+  useEffect(() => {
+    if (cobros.length > 0) {
       calculateMetrics(cobros);
-    } catch (error) {
-      console.error("Error cargando métricas:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [cobros]);
+
+  useEffect(() => {
+    setLoading(cobrosLoading);
+  }, [cobrosLoading]);
 
   const calculateMetrics = (cobros: any[]) => {
-    const hoy = new Date().toISOString().slice(0, 10);
-    const mesActual = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
+    // Usar hora local en lugar de UTC
+    const now = new Date();
+    const hoy = now.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD en hora local
+    const mesActual = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
 
-    const cobrosHoy = cobros.filter(c => c.fecha_cobro?.slice(0, 10) === hoy);
-    const cobrosEsteMes = cobros.filter(c => c.fecha_cobro?.slice(0, 7) === mesActual);
+    console.log("🔍 Debug - Dashboard calculateMetrics:");
+    console.log("🔍 Debug - hoy:", hoy);
+    console.log("🔍 Debug - mesActual:", mesActual);
+    console.log("🔍 Debug - total cobros recibidos:", cobros.length);
+    console.log("🔍 Debug - fechas de cobros (primeras 5):", cobros.slice(0, 5).map(c => c.fecha_cobro?.slice(0, 10)));
+    console.log("🔍 Debug - fechas completas de cobros (primeras 5):", cobros.slice(0, 5).map(c => c.fecha_cobro));
+    console.log("🔍 Debug - fechas convertidas a local (primeras 5):", cobros.slice(0, 5).map(c => {
+      if (!c.fecha_cobro) return 'null';
+      return new Date(c.fecha_cobro).toLocaleDateString('en-CA');
+    }));
+    console.log("🔍 Debug - comparación detallada:");
+    cobros.slice(0, 5).forEach((cobro, index) => {
+      if (cobro.fecha_cobro) {
+        const fechaOriginal = cobro.fecha_cobro;
+        const fechaLocal = new Date(cobro.fecha_cobro).toLocaleDateString('en-CA');
+        const coincide = fechaLocal === hoy;
+        console.log(`  Cobro ${index + 1}: Original=${fechaOriginal}, Local=${fechaLocal}, Coincide=${coincide}`);
+      }
+    });
+    console.log("🔍 Debug - primer cobro completo:", cobros[0]);
+
+    // Usar la fecha original del cobro (sin convertir a local) para comparación
+    const cobrosHoy = cobros.filter(c => {
+      if (!c.fecha_cobro) return false;
+      // Extraer solo la fecha (YYYY-MM-DD) de la fecha original
+      const fechaCobro = c.fecha_cobro.slice(0, 10);
+      return fechaCobro === hoy;
+    });
+    
+    const cobrosEsteMes = cobros.filter(c => {
+      if (!c.fecha_cobro) return false;
+      // Extraer solo el año-mes (YYYY-MM) de la fecha original
+      const fechaCobro = c.fecha_cobro.slice(0, 7);
+      return fechaCobro === mesActual;
+    });
+
+    console.log("🔍 Debug - cobrosHoy encontrados:", cobrosHoy.length);
+    console.log("🔍 Debug - cobrosEsteMes encontrados:", cobrosEsteMes.length);
 
     const totalIngresos = cobros.reduce((sum, c) => sum + (c.monto_total || 0), 0);
     const ingresosHoy = cobrosHoy.reduce((sum, c) => sum + (c.monto_total || 0), 0);
@@ -114,6 +149,47 @@ export default function Dashboard() {
       style: "currency",
       currency: "MXN",
     }).format(amount);
+  };
+
+  // Función inteligente para formatear números grandes
+  const formatSmartNumber = (value: number, isCurrency: boolean = false) => {
+    if (value === 0) return isCurrency ? "$0" : "0";
+    
+    const absValue = Math.abs(value);
+    const sign = value < 0 ? "-" : "";
+    
+    if (absValue >= 1e9) {
+      const formatted = (absValue / 1e9).toFixed(1);
+      return `${sign}${isCurrency ? "$" : ""}${formatted}B`;
+    } else if (absValue >= 1e6) {
+      const formatted = (absValue / 1e6).toFixed(1);
+      return `${sign}${isCurrency ? "$" : ""}${formatted}M`;
+    } else if (absValue >= 1e3) {
+      const formatted = (absValue / 1e3).toFixed(1);
+      return `${sign}${isCurrency ? "$" : ""}${formatted}K`;
+    } else {
+      return isCurrency ? formatCurrency(value) : value.toLocaleString();
+    }
+  };
+
+  // Función para formatear números con tooltip para valores completos
+  const formatWithTooltip = (value: number, isCurrency: boolean = false) => {
+    const smartValue = formatSmartNumber(value, isCurrency);
+    const fullValue = isCurrency ? formatCurrency(value) : value.toLocaleString();
+    
+    // Si el valor formateado es diferente al valor completo, mostrar tooltip
+    if (smartValue !== fullValue) {
+      return (
+        <span 
+          className="cursor-help" 
+          title={`${fullValue}`}
+        >
+          {smartValue}
+        </span>
+      );
+    }
+    
+    return smartValue;
   };
 
   const metodoPagoMontos: Record<string, number> = {};
@@ -191,7 +267,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-xl font-medium">Ingresos Totales</p>
-                <p className="text-5xl font-extrabold">{formatCurrency(metrics.totalIngresos)}</p>
+                <p className="text-5xl font-extrabold">{formatWithTooltip(metrics.totalIngresos, true)}</p>
               </div>
               <div className="p-4 bg-green-400 bg-opacity-30 rounded-full">
                 <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +280,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-xl font-medium">Promedio por Cobro</p>
-                <p className="text-5xl font-extrabold">{formatCurrency(metrics.promedioPorCobro)}</p>
+                <p className="text-5xl font-extrabold">{formatWithTooltip(metrics.promedioPorCobro, true)}</p>
               </div>
               <div className="p-4 bg-purple-400 bg-opacity-30 rounded-full">
                 <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,7 +325,7 @@ export default function Dashboard() {
               <div className="flex justify-between items-center p-6 bg-green-50 rounded-xl">
                 <div>
                   <p className="text-lg text-gray-600">Ingresos generados</p>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(metrics.ingresosEsteMes)}</p>
+                  <p className="text-3xl font-bold text-green-600">{formatWithTooltip(metrics.ingresosEsteMes, true)}</p>
                 </div>
                 <div className="p-4 bg-green-100 rounded-full">
                   <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +347,7 @@ export default function Dashboard() {
                     {metodoPagoIcons[metodo] || metodoPagoIcons["Sin especificar"]}
                     {metodo.replace(/_/g, " ")}
                   </span>
-                  <span className="font-bold text-green-700">{formatCurrency(monto)}</span>
+                  <span className="font-bold text-green-700">{formatWithTooltip(monto, true)}</span>
                 </li>
               ))}
             </ul>

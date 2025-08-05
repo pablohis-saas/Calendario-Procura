@@ -497,7 +497,7 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-900">
                   {cobro.conceptos && cobro.conceptos.length > 0
-                    ? cobro.conceptos.map((con: any) => `${con.servicio?.nombre || ''} ${con.cantidad}`).join(', ')
+                    ? cobro.conceptos.map((con: any) => `${con.cantidad} ${con.servicio?.nombre || ''}`).join(', ')
                     : '-'}
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap text-sm font-semibold text-green-600">

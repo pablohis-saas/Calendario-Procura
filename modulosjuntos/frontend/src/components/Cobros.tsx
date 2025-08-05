@@ -5,8 +5,9 @@ import { Input } from "./ui/input";
 import { useForm, useFieldArray as useFieldArrayRH } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useConceptos } from "./ConceptosContext";
-import { crearCobro, agregarConceptoACobro, getPacientes, getUsuarios, getConsultorios, getCobros, eliminarCobro, editarCobro } from "../services/cobrosService";
+import { useConceptos } from "../hooks/useConceptos";
+import { crearCobro, agregarConceptoACobro, getPacientes, getUsuarios, getConsultorios, eliminarCobro, editarCobro } from "../services/cobrosService";
+import { useCobros } from "../hooks/useCobros";
 import PacienteSearch from "./PacienteSearch";
 import TableFilters from "./TableFilters";
 import { exportToPDF, exportToExcel, formatCobrosForExport } from "../services/exportService";
@@ -40,7 +41,7 @@ function getToday() {
 export default function Cobros({ embedded = false }: { embedded?: boolean }) {
   const [open, setOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const { servicios, loading } = useConceptos();
+  const { servicios, isLoading: loading } = useConceptos();
   const {
     register,
     handleSubmit,
@@ -80,7 +81,6 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
   const [pacientes, setPacientes] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [consultorios, setConsultorios] = useState<any[]>([]);
-  const [cobros, setCobros] = useState<any[]>([]);
   const [selectedPaciente, setSelectedPaciente] = useState<any>(null);
   const [filteredCobros, setFilteredCobros] = useState<any[]>([]);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -89,20 +89,23 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
   const [editCobro, setEditCobro] = useState<any>(null);
   const [editFormOpen, setEditFormOpen] = useState(false);
 
+  // Usar el hook de cobros
+  const { cobros, isLoading: cobrosLoading, create: createCobro, update: updateCobro, remove: removeCobro } = useCobros();
+
   useEffect(() => {
     getPacientes().then(setPacientes);
     getUsuarios().then(setUsuarios);
     getConsultorios().then(setConsultorios);
-    getCobros().then((data) => {
-      setCobros(data);
-      setFilteredCobros(data);
-    });
   }, []);
 
+  // Actualizar filteredCobros cuando cambien los cobros
+  useEffect(() => {
+    setFilteredCobros(cobros);
+  }, [cobros]);
+
   const refreshCobros = async () => {
-    const data = await getCobros();
-    setCobros(data);
-    setFilteredCobros(data);
+    // El hook maneja la actualización automáticamente
+    console.log('🔄 Refrescando cobros...');
   };
 
   const handleFiltersChange = (filters: {
@@ -188,7 +191,7 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
         }))
       };
       console.log("payload a enviar", payload);
-      const cobro = await crearCobro(payload);
+      const cobro = await createCobro(payload);
       for (const concepto of data.conceptos) {
         console.log("agregando concepto", concepto);
         await agregarConceptoACobro({
@@ -202,7 +205,6 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
       }
       setSuccessMsg("Cobro registrado correctamente");
       setShowForm(false);
-      await refreshCobros();
       console.log("submit success");
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.error || e?.message || "Error al registrar el cobro");
@@ -517,7 +519,7 @@ export default function Cobros({ embedded = false }: { embedded?: boolean }) {
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-900">
                   {cobro.conceptos && cobro.conceptos.length > 0
-                    ? cobro.conceptos.map((con: any) => `${con.servicio?.nombre || ''} ${con.cantidad}`).join(', ')
+                    ? cobro.conceptos.map((con: any) => `${con.cantidad} ${con.servicio?.nombre || ''}`).join(', ')
                     : '-'}
                 </td>
                 <td className="px-8 py-5 whitespace-nowrap text-sm font-semibold text-green-600">

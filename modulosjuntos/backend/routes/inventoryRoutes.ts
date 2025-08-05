@@ -3,7 +3,10 @@ import { registerInventoryExit, getInventoryEntriesByCategory, getInventoryExits
 import prisma from '../prisma'
 import { Decimal } from '@prisma/client/runtime/library';
 import { v4 as uuidv4 } from 'uuid';
-import cacheService from '../services/cacheService';
+import CacheService from '../services/cacheService';
+
+// Instancia global del servicio de caché
+const cacheService = new CacheService(prisma);
 
 const router = Router();
 
@@ -83,7 +86,7 @@ router.post('/inventory-entry/batch', async (req, res) => {
     }
     
     // CACHÉ: Invalidar caché del dashboard antes de procesar
-    cacheService.invalidate('dashboard');
+    cacheService.clear();
     
     const results = [];
     for (const entry of entries) {
@@ -195,7 +198,7 @@ router.get('/dashboard/public', async (req, res) => {
     
     // CACHÉ: Verificar si tenemos datos en caché
     const cacheKey = `dashboard:${userSedeId}:${from || 'all'}:${to || 'all'}`;
-    const cachedData = cacheService.get(cacheKey);
+    const cachedData = await cacheService.get(cacheKey);
     
     if (cachedData) {
       console.log('📦 Sirviendo dashboard desde caché');

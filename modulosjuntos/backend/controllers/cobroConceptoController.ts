@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
+import CacheService from '../services/cacheService';
+
+// Instancia global del servicio de caché
+const cacheService = new CacheService(prisma);
 
 export const getAllCobroConceptos = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -41,6 +45,11 @@ export const getCobroConceptoById = async (req: Request, res: Response): Promise
 
 export const createCobroConcepto = async (req: Request, res: Response): Promise<void> => {
     try {
+        console.log("🔍 Debug - createCobroConcepto iniciado");
+        console.log("🔍 Debug - req.body:", req.body);
+        console.log("🔍 Debug - req.headers:", req.headers);
+        console.log("🔍 Debug - tenantFilter:", (req as any).tenantFilter);
+        
         const { cobro_id, servicio_id, precio_unitario, cantidad, subtotal, consultorio_id } = req.body;
         
         if (!cobro_id || !servicio_id || !precio_unitario || !cantidad || !subtotal || !consultorio_id) {
@@ -76,6 +85,17 @@ export const createCobroConcepto = async (req: Request, res: Response): Promise<
                 consultorio_id,
             },
         });
+        
+        // Invalidar caché de cobros para esta organización
+        const organizacionId = (req as any).tenantFilter?.organizacion_id;
+        console.log("🔍 Debug - tenantFilter:", (req as any).tenantFilter);
+        console.log("🔍 Debug - organizacionId:", organizacionId);
+        if (organizacionId) {
+            cacheService.invalidateCobros(organizacionId);
+            console.log("🔄 Caché de cobros invalidado después de agregar concepto para organización:", organizacionId);
+        } else {
+            console.log("⚠️ No se pudo obtener organizacionId para invalidar caché en concepto");
+        }
         
         res.status(200).json(concepto);
     } catch (error) {
@@ -135,6 +155,13 @@ export const updateCobroConcepto = async (req: Request, res: Response): Promise<
             data: updateData,
         });
         
+        // Invalidar caché de cobros para esta organización
+        const organizacionId = (req as any).tenantFilter?.organizacion_id;
+        if (organizacionId) {
+            cacheService.invalidateCobros(organizacionId);
+            console.log("🔄 Caché de cobros invalidado después de actualizar concepto para organización:", organizacionId);
+        }
+        
         res.json(concepto);
     } catch (error) {
         console.error('Error updating cobro concepto:', error);
@@ -147,6 +174,13 @@ export const deleteCobroConcepto = async (req: Request, res: Response): Promise<
         const { id } = req.params;
         
         await prisma.cobroConcepto.delete({ where: { id } });
+        
+        // Invalidar caché de cobros para esta organización
+        const organizacionId = (req as any).tenantFilter?.organizacion_id;
+        if (organizacionId) {
+            cacheService.invalidateCobros(organizacionId);
+            console.log("🔄 Caché de cobros invalidado después de eliminar concepto para organización:", organizacionId);
+        }
         
         res.json({ message: 'CobroConcepto eliminado' });
     } catch (error) {

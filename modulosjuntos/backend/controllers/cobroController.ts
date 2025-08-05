@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { asyncHandler } from '../utils/asyncHandler';
+import CacheService from '../services/cacheService';
+
+// Instancia global del servicio de caché
+const cacheService = new CacheService(prisma);
 
 console.log("INICIANDO CONTROLADOR COBROS!!!");
 process.on('uncaughtException', function (err) {
@@ -19,44 +23,119 @@ export const getAllCobros = asyncHandler(async (req: Request, res: Response) => 
   
   let cobros: any[];
   if (organizacionId) {
-    // Filtrar por organización usando SQL directo
-    cobros = await prisma.$queryRaw`
-      SELECT c.*, 
-             p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.telefono as paciente_telefono, p.email as paciente_email,
-             u.nombre as usuario_nombre, u.apellido as usuario_apellido, u.email as usuario_email
+    // TEMPORALMENTE DESHABILITADO EL CACHÉ PARA DEBUGGING
+    // const cachedCobros = await cacheService.getCobrosByOrganizacion(organizacionId);
+    // if (cachedCobros) {
+    //   console.log("📦 Datos obtenidos del caché");
+    //   return res.json(cachedCobros);
+    // }
+    console.log("🔄 Obteniendo datos frescos de la base de datos");
+    // Optimización: Obtener todos los datos en una sola consulta usando JOINs
+    const cobrosIds = await prisma.$queryRaw`
+      SELECT c.id
       FROM cobros c
       JOIN pacientes p ON c.paciente_id = p.id
-      JOIN usuarios u ON c.usuario_id = u.id
       WHERE p.organizacion_id = ${organizacionId}::uuid
       ORDER BY c.fecha_cobro DESC
     ` as any[];
     
-          // Obtener conceptos, historial y métodos de pago para cada cobro
-      for (const cobro of cobros) {
-        // Conceptos
-        const conceptos = await prisma.$queryRaw`
-          SELECT cc.*, s.nombre as servicio_nombre, s.precio_base
-          FROM cobro_conceptos cc
-          JOIN servicios s ON cc.servicio_id = s.id
-          WHERE cc.cobro_id = ${cobro.id}
-        ` as any[];
-        cobro.conceptos = conceptos;
-        
-        // Historial
-        const historial = await prisma.$queryRaw`
-          SELECT * FROM historial_cobros
-          WHERE cobro_id = ${cobro.id}
-          ORDER BY created_at DESC
-        ` as any[];
-        cobro.historial = historial;
-        
-        // Métodos de pago
-        const metodosPago = await prisma.$queryRaw`
-          SELECT * FROM metodos_pago_cobro
-          WHERE cobro_id = ${cobro.id}
-        ` as any[];
-        cobro.metodos_pago = metodosPago;
+    if (cobrosIds.length === 0) {
+      return res.json([]);
+    }
+    
+    const ids = cobrosIds.map((c: any) => c.id);
+    
+    // Obtener todos los datos relacionados en consultas paralelas
+    const [cobrosData, conceptosData, historialData, metodosPagoData] = await Promise.all([
+      // Datos principales de cobros con pacientes y usuarios
+      prisma.$queryRaw`
+        SELECT c.*, 
+               p.nombre as paciente_nombre, p.apellido as paciente_apellido, p.telefono as paciente_telefono, p.email as paciente_email,
+               u.nombre as usuario_nombre, u.apellido as usuario_apellido, u.email as usuario_email
+        FROM cobros c
+        JOIN pacientes p ON c.paciente_id = p.id
+        JOIN usuarios u ON c.usuario_id = u.id
+        WHERE c.id = ANY(${ids})
+        ORDER BY c.fecha_cobro DESC
+      `,
+      
+      // Todos los conceptos de una vez
+      prisma.$queryRaw`
+        SELECT cc.*, s.nombre as servicio_nombre, s.precio_base, cc.cobro_id
+        FROM cobro_conceptos cc
+        JOIN servicios s ON cc.servicio_id = s.id
+        WHERE cc.cobro_id = ANY(${ids})
+      `,
+      
+      // Todo el historial de una vez
+      prisma.$queryRaw`
+        SELECT *, cobro_id
+        FROM historial_cobros
+        WHERE cobro_id = ANY(${ids})
+        ORDER BY created_at DESC
+      `,
+      
+      // Todos los métodos de pago de una vez
+      prisma.$queryRaw`
+        SELECT *, cobro_id
+        FROM metodos_pago_cobro
+        WHERE cobro_id = ANY(${ids})
+      `
+    ]) as [any[], any[], any[], any[]];
+    
+    // Crear mapas para acceso rápido
+    const conceptosMap = new Map();
+    const historialMap = new Map();
+    const metodosPagoMap = new Map();
+    
+    conceptosData.forEach((concepto: any) => {
+      if (!conceptosMap.has(concepto.cobro_id)) {
+        conceptosMap.set(concepto.cobro_id, []);
       }
+      conceptosMap.get(concepto.cobro_id).push({
+        ...concepto,
+        servicio: {
+          id: concepto.servicio_id,
+          nombre: concepto.servicio_nombre,
+          precio_base: concepto.precio_base
+        }
+      });
+    });
+    
+    historialData.forEach((historial: any) => {
+      if (!historialMap.has(historial.cobro_id)) {
+        historialMap.set(historial.cobro_id, []);
+      }
+      historialMap.get(historial.cobro_id).push(historial);
+    });
+    
+    metodosPagoData.forEach((metodo: any) => {
+      if (!metodosPagoMap.has(metodo.cobro_id)) {
+        metodosPagoMap.set(metodo.cobro_id, []);
+      }
+      metodosPagoMap.get(metodo.cobro_id).push(metodo);
+    });
+    
+    // Transformar los datos para que coincidan con la estructura esperada por el frontend
+    cobros = cobrosData.map(cobro => ({
+      ...cobro,
+      paciente: {
+        id: cobro.paciente_id,
+        nombre: cobro.paciente_nombre,
+        apellido: cobro.paciente_apellido,
+        telefono: cobro.paciente_telefono,
+        email: cobro.paciente_email
+      },
+      usuario: {
+        id: cobro.usuario_id,
+        nombre: cobro.usuario_nombre,
+        apellido: cobro.usuario_apellido,
+        email: cobro.usuario_email
+      },
+      conceptos: conceptosMap.get(cobro.id) || [],
+      historial: historialMap.get(cobro.id) || [],
+      metodos_pago: metodosPagoMap.get(cobro.id) || []
+    }));
   } else {
     // Sin filtro de organización (comportamiento original)
     cobros = await prisma.cobro.findMany({
@@ -73,6 +152,12 @@ export const getAllCobros = asyncHandler(async (req: Request, res: Response) => 
       },
     });
   }
+  
+  // TEMPORALMENTE DESHABILITADO EL CACHÉ PARA DEBUGGING
+  // Guardar en caché si hay organizacionId
+  // if (organizacionId) {
+  //   cacheService.setCobrosByOrganizacion(organizacionId, cobros);
+  // }
   
   res.json(cobros);
 });
@@ -167,6 +252,18 @@ export const createCobro = asyncHandler(async (req: Request, res: Response) => {
       metodos_pago: true,
     },
   });
+  
+  // Invalidar caché de cobros para esta organización
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  console.log("🔍 Debug - tenantFilter:", (req as any).tenantFilter);
+  console.log("🔍 Debug - organizacionId:", organizacionId);
+  if (organizacionId) {
+    cacheService.invalidateCobros(organizacionId);
+    console.log("🔄 Caché de cobros invalidado para organización:", organizacionId);
+  } else {
+    console.log("⚠️ No se pudo obtener organizacionId para invalidar caché");
+  }
+  
   console.log("Cobro completo después de crear:", JSON.stringify(cobroCompleto, null, 2));
   res.json(cobroCompleto);
 });
@@ -247,6 +344,14 @@ export const updateCobro = asyncHandler(async (req: Request, res: Response) => {
       metodos_pago: true,
     },
   });
+  
+  // Invalidar caché de cobros para esta organización
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  if (organizacionId) {
+    cacheService.invalidateCobros(organizacionId);
+    console.log("🔄 Caché de cobros invalidado después de actualizar cobro para organización:", organizacionId);
+  }
+  
   res.json(cobroCompleto);
 });
 
@@ -261,6 +366,14 @@ export const deleteCobro = asyncHandler(async (req: Request, res: Response) => {
   await prisma.historialCobro.deleteMany({ where: { cobro_id: id } });
   // Finalmente, eliminar el cobro
   await prisma.cobro.delete({ where: { id } });
+  
+  // Invalidar caché de cobros para esta organización
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  if (organizacionId) {
+    cacheService.invalidateCobros(organizacionId);
+    console.log("🔄 Caché de cobros invalidado después de eliminar cobro para organización:", organizacionId);
+  }
+  
   res.json({ message: 'Cobro eliminado' });
 });
 
@@ -312,6 +425,13 @@ export const addServicioToCobro = asyncHandler(async (req: Request, res: Respons
     data: { monto_total: nuevoMontoTotal },
   });
   
+  // Invalidar caché de cobros para esta organización
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  if (organizacionId) {
+    cacheService.invalidateCobros(organizacionId);
+    console.log("🔄 Caché de cobros invalidado después de agregar servicio a cobro para organización:", organizacionId);
+  }
+  
   res.json(concepto);
 });
 
@@ -361,6 +481,13 @@ export const addConceptoToCobro = asyncHandler(async (req: Request, res: Respons
     where: { id },
     data: { monto_total: nuevoMontoTotal },
   });
+  
+  // Invalidar caché de cobros para esta organización
+  const organizacionId = (req as any).tenantFilter?.organizacion_id;
+  if (organizacionId) {
+    cacheService.invalidateCobros(organizacionId);
+    console.log("🔄 Caché de cobros invalidado después de agregar concepto a cobro para organización:", organizacionId);
+  }
   
   res.json(concepto);
 }); 

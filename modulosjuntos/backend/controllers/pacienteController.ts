@@ -128,35 +128,46 @@ export async function deletePaciente(req: Request, res: Response) {
 export async function searchPacientes(req: Request, res: Response) {
   try {
     const { q } = req.query;
-    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+    console.log('🔍 Búsqueda de pacientes - Query:', q);
+    
+    if (!q || typeof q !== 'string' || q.trim().length < 1) {
       return res.status(400).json({ error: 'Query demasiado corto' });
     }
     
     // Obtener organizacion_id del usuario autenticado si está disponible
     const organizacionId = (req as any).tenantFilter?.organizacion_id;
+    console.log('🏢 Organización ID:', organizacionId);
     
     let pacientes;
     if (organizacionId) {
-      // Filtrar por organización usando SQL directo
-      pacientes = await prisma.$queryRaw`
-        SELECT * FROM pacientes 
-        WHERE organizacion_id = ${organizacionId}
-        AND (nombre ILIKE ${`%${q}%`} OR apellido ILIKE ${`%${q}%`})
-        ORDER BY nombre ASC, apellido ASC
-        LIMIT 10
-      `;
-    } else {
-      // Sin filtro de organización (comportamiento original)
+      console.log('🔍 Usando Prisma con filtro de organización');
+      // Filtrar por organización usando Prisma
       pacientes = await prisma.paciente.findMany({
         where: {
+          organizacion_id: organizacionId,
           OR: [
-            { nombre: { contains: q } },
-            { apellido: { contains: q } },
+            { nombre: { startsWith: q, mode: 'insensitive' } },
+            { apellido: { startsWith: q, mode: 'insensitive' } },
           ],
         },
         orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }],
         take: 10,
       });
+      console.log('📋 Resultados Prisma con organización:', pacientes);
+    } else {
+      console.log('🔍 Usando Prisma sin filtro de organización');
+      // Sin filtro de organización (comportamiento original)
+      pacientes = await prisma.paciente.findMany({
+        where: {
+          OR: [
+            { nombre: { startsWith: q, mode: 'insensitive' } },
+            { apellido: { startsWith: q, mode: 'insensitive' } },
+          ],
+        },
+        orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }],
+        take: 10,
+      });
+      console.log('📋 Resultados Prisma:', pacientes);
     }
     
     res.json(pacientes);

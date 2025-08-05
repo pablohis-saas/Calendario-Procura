@@ -5,6 +5,7 @@ import { DollarSign, Package, AlertTriangle, Clock } from 'lucide-react'
 import { StockAlertsModal } from './StockAlertsModal'
 import type { ProductInventoryDto, ExpirationAlertDto } from '@/types/inventario-dashboard'
 import { useNavigate } from 'react-router-dom'
+import { SmartNumber } from '@/components/ui/smart-number'
 
 interface DashboardMetricsProps {
   totalInventoryValue: number
@@ -28,7 +29,7 @@ export function DashboardMetrics({ totalInventoryValue, totalUsedInventoryCost, 
             <DollarSign className="w-10 h-10 text-white" />
           </div>
           <div className="text-white text-4xl font-extrabold leading-tight drop-shadow-sm text-center">
-            {currency.format(totalInventoryValue)}
+            <SmartNumber value={totalInventoryValue} isCurrency={true} className="text-white" />
           </div>
           <div className="text-blue-100 text-lg font-semibold mt-2 text-center">Valor Total</div>
         </div>
@@ -41,7 +42,7 @@ export function DashboardMetrics({ totalInventoryValue, totalUsedInventoryCost, 
             <Package className="w-10 h-10 text-white" />
           </div>
           <div className="text-white text-4xl font-extrabold leading-tight drop-shadow-sm text-center">
-            {currency.format(totalUsedInventoryCost)}
+            <SmartNumber value={totalUsedInventoryCost} isCurrency={true} className="text-white" />
           </div>
           <div className="text-green-100 text-lg font-semibold mt-2 text-center">Inventario Utilizado</div>
         </button>
@@ -54,7 +55,7 @@ export function DashboardMetrics({ totalInventoryValue, totalUsedInventoryCost, 
             <Package className="w-10 h-10 text-white" />
           </div>
           <div className="text-white text-4xl font-extrabold leading-tight drop-shadow-sm text-center">
-            {currency.format(totalEnteredInventoryCost)}
+            <SmartNumber value={totalEnteredInventoryCost} isCurrency={true} className="text-white" />
           </div>
           <div className="text-teal-100 text-lg font-semibold mt-2 text-center">Inventario Ingresado</div>
         </button>

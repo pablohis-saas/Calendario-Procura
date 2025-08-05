@@ -5,6 +5,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import axios from 'axios';
 
 interface Paciente {
   id: string;
@@ -44,21 +45,15 @@ export function PacienteAutocomplete({ value, onChange, onError }: PacienteAutoc
 
   // Buscar pacientes en el backend
   const searchPacientes = async (query: string) => {
-    if (query.length < 2) {
+    if (query.length < 1) {
       setPacientes([]);
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3002/api/pacientes/search?q=${encodeURIComponent(query)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPacientes(data);
-      } else {
-        console.error('Error buscando pacientes:', response.statusText);
-        onError?.('Error al buscar pacientes');
-      }
+      const response = await axios.get(`/api/pacientes/search?q=${encodeURIComponent(query)}`);
+      setPacientes(response.data);
     } catch (error) {
       console.error('Error en búsqueda:', error);
       onError?.('Error de conexión');

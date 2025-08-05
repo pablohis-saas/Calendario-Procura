@@ -52,9 +52,9 @@ export default function PacienteSearch({
     const filtered = pacientes.filter(paciente => {
       const fullName = `${paciente.nombre} ${paciente.apellido}`.toLowerCase();
       const search = searchTerm.toLowerCase();
-      return fullName.includes(search) || 
-             paciente.nombre.toLowerCase().includes(search) || 
-             paciente.apellido.toLowerCase().includes(search);
+      return fullName.startsWith(search) || 
+             paciente.nombre.toLowerCase().startsWith(search) || 
+             paciente.apellido.toLowerCase().startsWith(search);
     });
 
     setFilteredPacientes(filtered.slice(0, 8)); // Limitar a 8 resultados

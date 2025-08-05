@@ -7,6 +7,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { TimePicker } from "../components/ui/time-picker";
 import PacienteSearch from "../components/PacienteSearch";
 import { getPacientes, crearPaciente } from "../services/pacientesService";
 import { useForm } from "react-hook-form";
@@ -108,13 +109,35 @@ export default function Calendario() {
   const {
     disponibilidades,
     isLoading: isLoadingDispon,
+    fetchDisponibilidades,
   } = useDisponibilidadesMedico(usuarioId)
   const {
     bloqueos,
     isLoading: isLoadingBloq,
+    fetchBloqueos,
   } = useBloqueosMedico(usuarioId)
-  // LOG DE DEPURACION: Verificar si llegan disponibilidades
-  console.log('Disponibilidades recibidas del hook:', disponibilidades)
+  
+  // SOLUCIÓN DEFINITIVA: Forzar actualización de disponibilidades y bloqueos
+  useEffect(() => {
+    if (usuarioId) {
+      console.log('🔄 Forzando actualización de disponibilidades y bloqueos...');
+      fetchDisponibilidades();
+      fetchBloqueos();
+    }
+  }, [usuarioId, fetchDisponibilidades, fetchBloqueos]);
+
+  // SOLUCIÓN ADICIONAL: Polling cada 30 segundos para mantener datos sincronizados
+  useEffect(() => {
+    if (!usuarioId) return;
+    
+    const interval = setInterval(() => {
+      console.log('🔄 Polling: Actualizando disponibilidades y bloqueos...');
+      fetchDisponibilidades();
+      fetchBloqueos();
+    }, 30000); // 30 segundos
+    
+    return () => clearInterval(interval);
+  }, [usuarioId, fetchDisponibilidades, fetchBloqueos]);
 
   // Utilidad para saber si un slot está disponible, bloqueado o fuera de disponibilidad
   function getSlotStatus(date: Date) {
@@ -126,10 +149,12 @@ export default function Calendario() {
         return { status: 'bloqueado', motivo: b.motivo }
     }
     // 2. Disponibilidad
-    // Ajuste: getDay() devuelve 0=Domingo, 1=Lunes... pero en la base de datos 1=Lunes, 7=Domingo
-    const dia = date.getDay() === 0 ? 7 : date.getDay()
+    // CORRECCIÓN: getDay() devuelve 0=Domingo, 1=Lunes, 2=Martes... 
+    // En la base de datos también es 0=Domingo, 1=Lunes, 2=Martes...
+    const dia = date.getDay() // No necesitamos mapeo, ya coincide
     const hora = date.getHours()
     const minuto = date.getMinutes()
+    
     for (const d of disponibilidades) {
       if (d.dia_semana === dia) {
         const [hIni, mIni] = d.hora_inicio.split(':').map(Number)
@@ -137,8 +162,10 @@ export default function Calendario() {
         // Siempre parte de un objeto Date válido, nunca de un string con espacio
         const ini = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hIni, mIni, 0, 0)
         const fin = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hFin, mFin, 0, 0)
-        if (date >= ini && date < fin)
+        
+        if (date >= ini && date < fin) {
           return { status: 'disponible' }
+        }
       }
     }
     // 3. Fuera de disponibilidad
@@ -175,10 +202,6 @@ export default function Calendario() {
   // Interceptar selección de slot para evitar abrir modal en bloqueos o fuera de disponibilidad
   function handleSelectSlotSafe(slotInfo: SlotInfo) {
     const { status, motivo } = getSlotStatus(slotInfo.start)
-    // LOGS DE DEPURACION
-    console.log('Disponibilidades:', disponibilidades)
-    console.log('usuario_id usado:', usuarioId)
-    console.log('Slot seleccionado:', slotInfo.start)
     if (status === 'bloqueado') {
       toast.error(motivo ? `Bloqueado: ${motivo}` : 'Horario bloqueado')
       return
@@ -195,6 +218,42 @@ export default function Calendario() {
     cargarPacientes();
     setMiniDate(date)
   }, [date]);
+
+  // SOLUCIÓN DEFINITIVA: Refrescar solo cuando cambien las disponibilidades o bloqueos
+  useEffect(() => {
+    if (usuarioId) {
+      console.log('🔄 Disponibilidades o bloqueos cambiaron, refrescando calendario...');
+      cargarEventos();
+      cargarPacientes();
+    }
+  }, [disponibilidades, bloqueos, usuarioId]);
+
+  // SOLUCIÓN ADICIONAL: Refrescar cuando la página se vuelve visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && usuarioId) {
+        console.log('🔄 Página visible, refrescando datos...');
+        cargarEventos();
+        cargarPacientes();
+      }
+    };
+
+    const handleFocus = () => {
+      if (usuarioId) {
+        console.log('🔄 Ventana con focus, refrescando datos...');
+        cargarEventos();
+        cargarPacientes();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [usuarioId]);
 
   const cargarEventos = async () => {
     try {
@@ -684,14 +743,6 @@ export default function Calendario() {
           >
             Gestionar bloqueos y disponibilidad de médicos
           </a>
-          {(filtroEstado || filtroPaciente || filtroConcepto || filtroFechaInicio || filtroFechaFin) && (
-            <button
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold"
-              onClick={() => { setFiltroEstado(""); setFiltroPaciente(""); setFiltroConcepto(""); setFiltroFechaInicio(""); setFiltroFechaFin(""); }}
-            >
-              Limpiar filtros
-            </button>
-          )}
         </div>
       </div>
       {/* Calendario principal */}
@@ -917,32 +968,28 @@ export default function Calendario() {
               <div className="flex gap-2">
                 <label className="flex-1 text-sm">
                   Inicio:
-                  <Input
-                    type="time"
-                    step="900"
+                  <TimePicker
                     value={format(form.start, "HH:mm")}
-                    onChange={e => {
-                      const [h, m] = e.target.value.split(":").map(Number);
+                    onChange={time => {
+                      const [h, m] = time.split(":").map(Number);
                       const newStart = new Date(form.start);
                       newStart.setHours(h, m);
                       setForm(f => ({ ...f, start: newStart }));
                     }}
-                    required
+                    placeholder="Hora de inicio"
                   />
                 </label>
                 <label className="flex-1 text-sm">
                   Fin:
-                  <Input
-                    type="time"
-                    step="900"
+                  <TimePicker
                     value={format(form.end, "HH:mm")}
-                    onChange={e => {
-                      const [h, m] = e.target.value.split(":").map(Number);
+                    onChange={time => {
+                      const [h, m] = time.split(":").map(Number);
                       const newEnd = new Date(form.end);
                       newEnd.setHours(h, m);
                       setForm(f => ({ ...f, end: newEnd }));
                     }}
-                    required
+                    placeholder="Hora de fin"
                   />
                 </label>
               </div>

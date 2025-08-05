@@ -61,6 +61,7 @@ export const formatCobrosForExport = (cobros: any[]) => {
   const headers = [
     "ID",
     "Paciente",
+    "Conceptos",
     "Monto Total",
     "Fecha",
     "Método de Pago",
@@ -71,9 +72,14 @@ export const formatCobrosForExport = (cobros: any[]) => {
   const rows = cobros.map(cobro => [
     cobro.id,
     `${cobro.paciente?.nombre || ""} ${cobro.paciente?.apellido || ""}`,
+    cobro.conceptos && cobro.conceptos.length > 0
+      ? cobro.conceptos.map((con: any) => `${con.cantidad} ${con.servicio?.nombre || ''}`).join(', ')
+      : '-',
     `$${cobro.monto_total || 0}`,
     cobro.fecha_cobro?.slice(0, 10) || "",
-    cobro.metodo_pago || "",
+    Array.isArray(cobro.metodos_pago) && cobro.metodos_pago.length > 0 
+      ? cobro.metodos_pago.map((mp: any) => mp.metodo_pago).join(', ')
+      : "",
     cobro.notas?.toLowerCase().includes("factura") ? "Sí" : "No",
     cobro.estado || ""
   ]);

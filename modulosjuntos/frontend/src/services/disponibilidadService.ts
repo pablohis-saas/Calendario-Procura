@@ -1,4 +1,5 @@
 import axios from 'axios'
+import './conceptosService' // Importar para aplicar interceptores de axios
 
 const API_BASE_URL = '/api'
 const DISPONIBILIDAD_URL = `${API_BASE_URL}/disponibilidad-medico`

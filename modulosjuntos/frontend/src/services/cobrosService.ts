@@ -27,27 +27,42 @@ export async function crearCobro(data: any) {
 }
 
 export async function agregarConceptoACobro(data: any) {
-  const res = await axios.post(CONCEPTOS_URL, data);
+  const token = localStorage.getItem('token');
+  const res = await axios.post(CONCEPTOS_URL, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return res.data;
 }
 
 export async function getPacientes() {
-  const res = await axios.get(PACIENTES_URL);
+  const token = localStorage.getItem('token');
+  const res = await axios.get(PACIENTES_URL, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return res.data;
 }
 
 export async function getUsuarios() {
-  const res = await axios.get(USUARIOS_URL);
+  const token = localStorage.getItem('token');
+  const res = await axios.get(USUARIOS_URL, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return res.data;
 }
 
 export async function getConsultorios() {
-  const res = await axios.get(CONSULTORIOS_URL);
+  const token = localStorage.getItem('token');
+  const res = await axios.get(CONSULTORIOS_URL, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return res.data;
 }
 
 export async function getCobros() {
-  const res = await axios.get(COBROS_URL);
+  const token = localStorage.getItem('token');
+  const res = await axios.get(COBROS_URL, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return res.data;
 }
 

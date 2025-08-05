@@ -12,9 +12,14 @@ interface AuthenticatedRequest extends Request {
  * Middleware para autenticar usuarios y obtener información de la organización
  */
 export function authenticateMultiTenant(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  console.log("🔍 Debug - authenticateMultiTenant ejecutándose");
+  console.log("🔍 Debug - URL:", req.url);
+  console.log("🔍 Debug - Method:", req.method);
+  
   const authHeader = req.headers.authorization;
   
   if (!authHeader) {
+    console.log("❌ Error - Token no proporcionado");
     return res.status(401).json({ error: 'Token no proporcionado' });
   }
   
@@ -47,6 +52,9 @@ export function authenticateMultiTenant(req: AuthenticatedRequest, res: Response
       req.user = usuario;
       req.organizacion = usuario.organizacion;
       req.tenantFilter = { organizacion_id: usuario.organizacion.id };
+      
+      console.log("🔍 Debug - tenantFilter establecido:", req.tenantFilter);
+      console.log("🔍 Debug - organizacion_id:", usuario.organizacion.id);
       
       next();
     } catch (error) {
